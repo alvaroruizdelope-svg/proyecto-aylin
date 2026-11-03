@@ -22,3 +22,5 @@
 .lightbox-info>p:last-child{font-size:10px;margin:12px 0 0}
 #lightbox-credit{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:600px){.photo-credits ul{columns:1}.gallery-caption small{font-size:9px}.lightbox-info{padding:0 6px}#lightbox-caption{font-size:22px}.lightbox-content img{max-height:40dvh}.lightbox-info .button{font-size:11px;white-space:normal}}
+
+.news-card img{height:auto}.news-card .news-photo-credit{font-size:10px;margin:16px 0 0}.news-photo-credit a{text-decoration:underline;text-underline-offset:3px}

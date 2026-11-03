@@ -1,6 +1,6 @@
 # Aylin Nails · Guía de la demo
 
-Web estática sin instalaciones ni dependencias externas. La galería contiene 14 fotografías de Pexels almacenadas localmente y optimizadas en WebP; fuentes y licencia en `img/FOTOGRAFIAS.md`. Las ilustraciones SVG originales se conservan en portada y otras secciones. Ninguna imagen se presenta como trabajo de Aylin. No hay analítica, cookies publicitarias, backend ni reservas automáticas.
+Web estática sin instalaciones ni dependencias externas. La galería contiene 14 fotografías de Pexels almacenadas localmente y optimizadas en WebP; fuentes y licencia en `img/FOTOGRAFIAS.md`. Inicio y Novedades también utilizan fotografías de esta selección. La ilustración de la sección Sobre mí se conserva como espacio provisional para la foto de Aylin. Ninguna imagen se presenta como trabajo de Aylin. No hay analítica, cookies publicitarias, backend ni reservas automáticas.
 
 ## Abrir la web
 

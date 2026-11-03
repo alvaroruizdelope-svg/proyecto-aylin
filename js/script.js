@@ -171,9 +171,9 @@ const GALLERY = [
   }
 ];
 const NEWS = [
-  { title: 'La belleza de lo natural', date: '2026-10-12', label: 'INSPIRACIÓN · DEMO', image: 'img/nude.svg', alt: 'Ilustración de uñas nude', description: 'Tonos suaves, formas delicadas y ese acabado que combina con todo.', content: 'Los tonos nude y rosa empolvado son el punto de partida de este moodboard. Guarda tu referencia favorita y coméntala al consultar tu cita. Publicación ficticia de ejemplo; no muestra un servicio ya realizado.' },
-  { title: 'Pequeños detalles, mucho estilo', date: '2026-10-19', label: 'DISEÑOS · DEMO', image: 'img/cereza.svg', alt: 'Ilustración de decoración de uñas con cerezas', description: 'Una línea, un motivo, un color inesperado. Inspírate para tu próximo diseño.', content: 'Una decoración puede ser tan sutil o tan expresiva como quieras. Esta propuesta ilustrada explora pequeños motivos sobre una base suave. Las opciones reales y su disponibilidad se confirmarán con Aylin.' },
-  { title: 'Tu próximo momento de cuidado', date: '2026-10-26', label: 'AVISO · DEMO', image: 'img/estudio.svg', alt: 'Ilustración de esmaltes para uñas', description: 'Este será el espacio para compartir avisos, nuevos servicios y futuras promociones.', content: 'Ejemplo de publicación: aquí se podrán anunciar promociones con sus fechas, condiciones y precios confirmados. Actualmente no hay ninguna oferta activa ni una promoción comercial real.' }
+  { title: 'La belleza de lo natural', date: '2026-10-12', label: 'INSPIRACIÓN · DEMO', image: 'img/pexels-3557600.webp', alt: 'Fotografía de manicura en tonos suaves con pequeños lunares', description: 'Tonos suaves, formas delicadas y ese acabado que combina con todo.', content: 'Los tonos nude y rosa empolvado son el punto de partida de este moodboard. Guarda tu referencia favorita y coméntala al consultar tu cita. Publicación ficticia de ejemplo; no muestra un servicio ya realizado.' },
+  { title: 'Pequeños detalles, mucho estilo', date: '2026-10-19', label: 'DISEÑOS · DEMO', image: 'img/pexels-15491630.webp', alt: 'Fotografía de uñas nude decoradas con corazones rojos', description: 'Una línea, un motivo, un color inesperado. Inspírate para tu próximo diseño.', content: 'Una decoración puede ser tan sutil o tan expresiva como quieras. Esta fotografía de inspiración explora pequeños motivos sobre una base suave. Las opciones reales y su disponibilidad se confirmarán con Aylin.' },
+  { title: 'Tu próximo momento de cuidado', date: '2026-10-26', label: 'AVISO · DEMO', image: 'img/pexels-4963822.webp', alt: 'Fotografía de pedicura con esmalte verde suave', description: 'Este será el espacio para compartir avisos, nuevos servicios y futuras promociones.', content: 'Ejemplo de publicación: aquí se podrán anunciar promociones con sus fechas, condiciones y precios confirmados. Actualmente no hay ninguna oferta activa ni una promoción comercial real.' }
 ];
 
 function whatsappUrl(service) {
@@ -306,8 +306,9 @@ NEWS.forEach(post => {
   image.src = post.image;
   image.alt = post.alt;
   image.loading = 'lazy';
-  image.width = 800;
-  image.height = 500;
+  const photo = GALLERY.find(item => item.image === post.image);
+  image.width = photo?.width || 800;
+  image.height = photo?.height || 500;
   const copy = document.createElement('div');
   copy.className = 'news-copy';
   const meta = document.createElement('div');
@@ -331,6 +332,17 @@ NEWS.forEach(post => {
     details.append(summary, content);
     details.addEventListener('toggle', () => { summary.textContent = details.open ? 'Leer menos' : 'Leer más'; });
     copy.append(details);
+  }
+  if (photo) {
+    const credit = document.createElement('p');
+    credit.className = 'news-photo-credit';
+    const link = document.createElement('a');
+    link.href = photo.source;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = `Foto: ${photo.author} / Pexels`;
+    credit.append(link);
+    copy.append(credit);
   }
   article.append(image, copy);
   document.querySelector('#novedades-lista').append(article);

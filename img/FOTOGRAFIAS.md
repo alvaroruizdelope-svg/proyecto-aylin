@@ -119,3 +119,7 @@ Adaptaciones: orientación EXIF aplicada, reducción hasta 1200 × 1400 píxeles
 - Archivo de origen: https://images.pexels.com/photos/4963822/pexels-photo-4963822.jpeg?auto=compress&cs=tinysrgb&w=1440
 - Licencia indicada en los metadatos: Pexels — https://www.pexels.com/license/
 - Dimensiones locales: 933 × 1400
+
+## Uso en Inicio y Novedades
+
+La portada reutiliza `pexels-34373400.webp` (Moo Lens). Novedades reutiliza `pexels-3557600.webp`, `pexels-15491630.webp` y `pexels-4963822.webp`; sus fuentes y licencias figuran arriba. Las fotografías son de inspiración, no trabajos ni instalaciones de Aylin.
