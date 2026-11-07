@@ -1,94 +1,136 @@
-# AYLIN SHOP · Fichas, variantes, privacidad y opiniones
+# AYLIN SHOP · Django local, presupuesto de servicios 0 €
 
-Seis productos y todos los importes a **0,00 €**. Diseño conservado. No hay pagos, ventas ni envíos reales. `js/integraciones.js` (PayPal, Apple Pay y transferencia) permanece sin cambios y desactivado.
+Esta entrega ejecuta la tienda con Django y SQLite. No se ha contratado ni publicado nada, no se han enviado correos reales ni activado transferencias. El catálogo demo sigue a **0,00 €**. Los archivos del servidor anterior se conservan para importación y pruebas, pero la entrada de desarrollo actual es **manage.py**.
 
-## Dos maneras de usar la demo
+## 1. Instalar en Windows 11
 
-### Vista estática (Live Server o abrir index.html)
+Necesitas Python 3.12 o superior de https://www.python.org/downloads/windows/ (gratuito). La aplicación usa Django 5.2 LTS. Abre PowerShell en la carpeta extraída del ZIP, donde está `manage.py`:
 
-Funciona el catálogo, las fichas, los filtros, tallas, cantidades, carrito y checkout gratuito. Solo se muestra la confirmación del pedido que se acaba de realizar, en memoria y sin datos de envío. No se guarda ni envía el pedido, no hay correos ni publicación de opiniones. La interfaz de opiniones indica que no ha enviado/guardado el comentario. La confirmación desaparece al recargar, cerrarla o comenzar otro checkout.
-
-### Servidor de pruebas local (necesario para opiniones y correo)
-
-Requiere Python 3.10 o superior. No requiere paquetes de ejecución externos. Desde la carpeta del proyecto:
-
-```sh
-python3 server/app.py --port 8000
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-En Windows normalmente puedes usar `py server/app.py --port 8000`. Abre `http://127.0.0.1:8000` en Chrome. El servidor solo escucha en loopback. No publicar, no enlazar un túnel y no usar como servidor de producción. No utiliza los archivos de la carpeta como raíz pública indiscriminada: solo permite HTML, CSS, JS e imágenes de rutas concretas.
+Si has instalado otra versión compatible, sustituye `py -3.12` por el selector de esa versión, o `py`. No necesitas activar scripts PowerShell, desactivar la política de ejecución, instalar Node ni introducir una tarjeta. Las dependencias son gratuitas. Elige tú el usuario y una contraseña robusta de al menos 12 caracteres en `createsuperuser`; no hay ninguna cuenta o contraseña predeterminada.
 
-`js/runtime.js` indica modo estático cuando se abre con Live Server. El servidor Python sustituye la respuesta de esa ruta en memoria para habilitar las operaciones de servidor; no modifica el archivo ni activa pagos.
+Abre **http://127.0.0.1:8000/** para la tienda y **http://127.0.0.1:8000/admin/** para el panel. Mantén abierta la terminal. Para parar, Ctrl+C; para arrancar de nuevo basta el último comando. Los datos permanecen en SQLite al parar o cerrar Chrome.
 
-## Fichas y tallas
+**Para enviar y guardar opiniones usa Django, no Live Server.** Abrir `index.html` o Live Server solo sirve como vista estática sin guardado de opiniones ni pedidos de servidor. No pulses el envío esperando un registro si estás en la vista estática: se indica que no se ha guardado.
 
-Pulsa la foto o el nombre del producto. En la ficha tienes imagen grande, descripción, disponibilidad demo, talla, cantidad y botón de añadir. Escape, cerrar y volver al catálogo cierran la ficha y devuelven el foco al elemento de origen.
+En Linux/macOS: `python3 -m venv .venv`, `.venv/bin/python -m pip install -r requirements.txt` y los mismos comandos de `manage.py` con `.venv/bin/python`.
 
-- Leggings, top y camiseta: XS, S, M y L; elección obligatoria, sin talla preseleccionada.
-- Arnés: XS, S, M y L; guía provisional sin medidas inventadas. Confirmar cuello, pecho y peso con el fabricante.
-- Correa y juguete: talla única.
-- Leggings S y M son líneas independientes en carrito, resumen, confirmación y correo.
-- Todas las variantes están inicialmente disponibles. `available: false` prepara el caso sin stock por talla. `demoLimit: 20` limita cantidades de prueba; no es inventario real ni se descuenta tras un pedido.
+## 2. Datos privados y conservación
 
-El catálogo canónico está en `data/catalogo.json`. Tras editarlo, ejecuta `python3 server/sync_catalog.py` para regenerar `js/catalogo.js`. El servidor valida los datos desde el JSON y nunca acepta nombres, precios o importes enviados por el navegador como autoridad.
+Las bases y claves no se guardan en el proyecto ni se incluyen en GitHub/ZIP. Ubicación predeterminada:
 
-## Privacidad de pedidos
+- Windows: `%LOCALAPPDATA%\AylinShopDjango\demo\shop.sqlite3`.
+- Linux/macOS: `$XDG_DATA_HOME/aylin-shop-django/demo/shop.sqlite3`, o `~/.local/share/aylin-shop-django/demo/shop.sqlite3` si no hay XDG_DATA_HOME.
+- `SHOP_PRIVATE_DIR` permite elegir otra base privada, siempre fuera del repositorio. Dentro se separan `demo` y `family`, con bases y claves distintas.
 
-Se ha eliminado la sección de historial, sus enlaces, avisos con datos de envío y toda persistencia de pedidos en el navegador. Al abrir esta versión se elimina la clave antigua `aylin-shop-demo-orders-v1` tanto de localStorage como de sessionStorage. No recupera ni muestra esos datos. Las copias de versiones anteriores que ya se hayan descargado no se pueden modificar remotamente: sustituye tu carpeta local por esta versión.
+Comprueba en Windows que las ACL del directorio solo permitan acceso a tu usuario y administradores del equipo. En Unix se crean carpetas 0700 y archivos 0600. Las claves aleatorias se generan por perfil en un archivo privado, sin secreto de desarrollo fijo en el código. No compartas esa carpeta, bases, copias o claves por GitHub.
 
-El carrito guarda exclusivamente identificadores de producto, tallas y cantidades bajo `aylin-shop-variants-v2`. No contiene correos, nombres, teléfonos ni direcciones.
+No se aplica la antigua limpieza automática de 24 horas a los registros Django. Pedidos, opiniones y auditorías se conservan hasta que el responsable decida su eliminación. Esto evita perder una prueba pendiente. El borrador `POLITICA_DATOS.md` organiza finalidades, acceso y eliminación. Debes acordar antes de cualquier prueba externa cuánto conservar los datos, quién accede y cómo se eliminan también las copias. Usa datos ficticios de envío durante el desarrollo.
 
-En modo servidor, SQLite guarda los pedidos privados fuera del checkout público. En Linux, directorio 0700 y archivo 0600, rechazando enlaces simbólicos y rutas dentro del proyecto. Por defecto utiliza `/tmp/aylin-shop-private-<uid>`. En Windows utiliza `%LOCALAPPDATA%\AylinShop\private`: comprueba que sus ACL solo permitan el acceso de tu usuario y administradores del equipo. Puedes cambiarlo con `SHOP_PRIVATE_DIR`, siempre a una carpeta privada fuera del proyecto.
+El navegador solo guarda productos, tallas y cantidades del carrito, no un historial de pedidos. La confirmación actual no contiene datos privados de envío y desaparece al recargar. No existe API pública de listados o detalles de pedidos.
 
-Al iniciar y al acceder al servidor se borran los pedidos y sesiones de prueba de más de 24 horas. Las opiniones y sus decisiones de moderación se conservan y no participan en esa limpieza, para no perder reseñas existentes. Si el servidor está detenido o inactivo los registros de pedidos pueden persistir hasta la siguiente limpieza. No borres el directorio privado si quieres conservar sus opiniones; realiza antes una copia privada protegida con el servidor parado. SQLite usa borrado de contenido de filas, pero esto no garantiza eliminación forense de copias, cachés o respaldos del sistema.
+## 3. Conservar datos del servidor anterior
 
-No hay API de historial, listados ni consulta de pedidos por número: GET `/api/orders` y `/api/orders/<id>` devuelven 404. El POST del pedido exige una cookie opaca HttpOnly/SameSite y CSRF; solo responde con la confirmación de esa solicitud, sus productos/tallas/cantidades y estados del correo, sin datos personales. El identificador o correo por sí solos no permiten consultar nada.
+No sobrescribas ni borres tu antigua base. Con el servidor detenido, conserva antes una copia privada. Después de `migrate`, importa explícitamente en el perfil demo, con una ruta real a tu archivo anterior:
 
-No existe panel administrativo web. `/admin` y `/api/admin/...` deniegan acceso. Falta autenticación, autorización de roles, sesiones seguras con HTTPS, auditoría y un panel conectado a endpoints protegidos; no hay contraseña en JS ni contenido privado ocultado mediante CSS.
-
-## Opiniones
-
-Las opiniones se encuentran únicamente en **«Opiniones de nuestros clientes»**, la última sección del contenido principal, justo antes del footer. No aparecen reseñas ni formularios de opinión en tarjetas o fichas de producto.
-
-El botón **Dejar una opinión** abre un formulario independiente con nombre público o alias (2–60 caracteres), valoración 1–5 y comentario de 10–2000 caracteres. El alias lo introduce el usuario conscientemente para publicarlo; nunca se obtiene del nombre del pedido. No se solicitan correo, teléfono ni número de pedido. Se rechazan formatos de contacto en el alias y todas las opiniones siguen pasando por moderación, también para detectar datos privados en comentarios o alias.
-
-No se incluyen nombres, opiniones ni valoraciones de ejemplo en la página. El listado muestra solo opiniones aprobadas: alias, estrellas, comentario y fecha real de publicación. La fecha se registra en la primera aprobación y se conserva en revisiones posteriores. Se cargan en bloques de 20 mediante **Ver más opiniones**; **Actualizar opiniones** vuelve a consultar el listado. En modo estático sin servidor se informa de que el envío y la lectura no están disponibles; no se inventan reseñas para llenar el espacio.
-
-La marca «Compra de demostración verificada por el servidor» depende de que la sesión que envía tenga un pedido demo registrado en el servidor. La API rechaza campos de verificación, correo o número de pedido. Esto no equivale a una compra pagada ni a una identidad verificada. Para ventas reales harán falta autenticación del comprador o invitaciones de un solo uso emitidas desde el servidor tras acreditar la titularidad.
-
-Al arrancar con una base de datos anterior se ejecuta una migración aditiva e idempotente: no borra ni altera comentarios, estrellas, asociaciones antiguas, estados o verificación. Los datos anteriores siguen mostrándose en el listado general. Si una reseña antigua carece de alias o de fecha de publicación, se indica **Nombre público no facilitado** o **Fecha de publicación no registrada**, sin inventar esa información ni convertir la fecha de envío en fecha de publicación. Las asociaciones antiguas a productos se mantienen como metadatos internos; no condicionan la ubicación visual. El servidor mantiene compatibilidad con el envío y consulta por producto de clientes anteriores, pero la nueva web utiliza exclusivamente la sección general.
-
-Moderación **manual local** por el operador que tiene acceso al equipo y al directorio privado (no es un panel web de administración):
-
-```sh
-python3 server/moderate.py --list
-python3 server/moderate.py --id 1 --decision approved --reason "Comentario legítimo sin datos personales"
-python3 server/moderate.py --id 2 --decision rejected --reason "Spam o insultos; motivo concreto de revisión"
+```powershell
+.\.venv\Scripts\python.exe manage.py import_legacy --source "RUTA-PRIVADA\shop.sqlite3"
 ```
 
-Usa el mismo `SHOP_PRIVATE_DIR` del servidor si lo has configurado. Revisa cada texto antes de aprobar: spam, amenazas, insultos, enlaces abusivos o datos personales no deben publicarse. Las críticas negativas legítimas se aprueban sin alterar estrellas ni comentarios. Cada decisión registra motivo y fecha; la herramienta no edita el texto. No hay filtro automático que convierta valoraciones negativas en positivas. No introduzcas datos personales en comentarios. Las pruebas verifican que una valoración legítima de una estrella se puede publicar intacta.
+El antiguo servidor usaba en Windows normalmente `%LOCALAPPDATA%\AylinShop\private\shop.sqlite3`. Comprueba que exista; si nunca lo ejecutaste o no tienes datos, no necesitas importar nada.
 
-## Correos reales de prueba
+La importación abre el origen en **solo lectura**: no ejecuta su limpieza, no lo modifica ni borra. Conserva pedidos gratuitos y sus variantes, comentarios, estrellas, alias, fechas existentes y decisiones. Puede repetirse sin duplicar registros del mismo origen. Si no existía talla, alias, fecha o administrador, se indica que no está registrado; no se inventa. Los fixtures antiguos de transferencia se archivan privadamente y no se convierten en ventas. La importación se cancela íntegramente si detecta un error o colisión que deba revisarse. No hay datos de clientes incluidos por defecto en esta entrega.
 
-Consulta los pasos exactos en `INTEGRACIONES.md`. Actualmente no hay credenciales configuradas: no se ha enviado ningún correo real. Con el servidor y Resend configurados, se intentan enviar dos correos reales, exclusivamente a buzones de prueba autorizados. El estado distingue no configurado, destinatario no autorizado, solicitud aceptada por el proveedor y envío no confirmado. La aceptación no demuestra entrega al buzón.
+## 4. Tienda, fichas y carrito
 
-Los correos incluyen identificador, productos, tallas, cantidades y total cero, e indican que no se enviará mercancía. El del vendedor añade los datos ficticios de envío y el estado demo. No hay claves ni dirección del vendedor en el código público. Los IDs de aceptación del proveedor se conservan en la base privada, no se exponen en la respuesta del checkout.
+Se conserva el diseño, fotografías, catálogo y opiniones generales al final de la página antes del footer. Pulsa foto o nombre para abrir una ficha. Ropa y arnés requieren XS/S/M/L; correa y juguete tienen talla única. La guía del arnés no inventa medidas del fabricante.
 
-## Pruebas
+S y M son líneas independientes en el carrito. Se pueden cambiar cantidades, eliminar y vaciar. El servidor valida IDs, tallas y cantidades y toma los precios de su catálogo; no acepta totales del cliente. El pedido demo de los seis productos vale cero. Doble clic/reintento con la misma solicitud conserva el pedido y no duplica sus notificaciones.
 
-```sh
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 tests/smoke.py
+`data/catalogo.json` sigue siendo la base de seis productos gratuitos. Django sirve `/js/catalogo.js` a partir de esa base. Para mantener la vista estática al editar el catálogo, ejecuta `python server/sync_catalog.py`. La disponibilidad por variante es simulada, no un inventario comercial real.
+
+## 5. Opiniones funcionales y moderación
+
+Desde **Opiniones de nuestros clientes → Dejar una opinión**, escribe un alias público, estrellas y comentario. Al registrarse en SQLite aparece la confirmación; no aparece públicamente hasta aprobarlo. Puedes cerrar el navegador: el registro permanece. No se rellenan reseñas ni clientes de ejemplo.
+
+En `/admin/`, entra en **Opiniones**, selecciona las pendientes y la acción Aprobar/Rechazar. Primero verás una pantalla de confirmación, con motivo obligatorio. Revisar también alias y datos privados. Una crítica negativa legítima se aprueba sin alterar texto ni estrellas. El panel no permite editar las valoraciones para mejorarlas. Se registra administrador, decisión, fecha y motivo. La fecha pública es la de primera aprobación; una fecha antigua desconocida no se inventa.
+
+Solo se publican alias, estrellas, comentario, fecha y marca de verificación, nunca correo/dirección de un pedido. La verificación la calcula el servidor a partir de un pedido de la sesión/usuario: demo confirmado o prueba familiar pagada. No basta escribir un correo o identificador. No se concede por un pedido familiar pendiente. No equivale a una compra comercial.
+
+## 6. Panel privado y permisos
+
+Django Admin exige login. Contraseñas con hashes de Django, sesiones HttpOnly/SameSite, CSRF y bloqueo por cinco fallos de acceso durante 15 minutos mediante django-axes. Para desbloquear un ensayo fallido local, espera el plazo o utiliza `manage.py axes_reset` desde tu equipo privado. No se desactiva la protección para acceder.
+
+El resumen usa SQLite: total de pedidos, pendientes, pagados, cancelados e importe marcado como pagado. Si no hay datos, muestra cero. La tabla muestra identificador, fecha, comprador, productos/tallas/cantidades, importe, método y estado. El detalle y los datos de envío solo son visibles con permiso. No se guardan PII en archivos públicos.
+
+El superusuario administra todo. Para otros operadores, crea usuarios/grupos con los permisos mínimos desde el panel. Un operador de consulta necesita `view_order`; moderar exige `view_review` y `moderate_review`; confirmar transferencias exige `view_order` y `confirm_transfer`. Tener acceso de comprador o conocer la URL no concede esos permisos.
+
+Las operaciones tienen pantalla de confirmación y auditoría. No se cambia el estado con un enlace GET. Una confirmación repetida de pago no duplica el evento ni el correo. No se comprueba el saldo de BBVA automáticamente. En esta versión solo se ensayan pagos con fixtures marcados como ficticios; los pedidos monetarios normales siguen bloqueados.
+
+## 7. Perfil familiar separado a 1,00 €
+
+No altera el catálogo demo y exige un usuario autenticado. Prepara su base y administrador aparte:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py migrate --settings=config.settings_family
+.\.venv\Scripts\python.exe manage.py createsuperuser --settings=config.settings_family
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8001 --settings=config.settings_family
 ```
 
-El primer comando solo requiere Python. Comprueba validación de tallas/cantidades/datos, CSRF, Host/Origin, aislamiento de sesiones, ausencia de endpoints de pedidos, idempotencia, permisos de archivos, moderación y verificación de compra. También comprueba migración de opiniones antiguas sin pérdida, nombre público, fecha de aprobación y paginación. Prueba el correo con un proveedor **simulado**; no sustituye una prueba real de Resend.
+Accede al panel de ese puerto para crear, si quieres, un usuario normal de comprador (sin permisos staff). La tienda de `http://127.0.0.1:8001/` pedirá login. Cada producto muestra 1,00 €, los seis suman 6,00 € y el botón final está bloqueado. **No hagas ninguna transferencia.** No existe variable que libere dinero real: los ajustes `FAMILY_CHECKOUT_ENABLED` y `FAMILY_MONEY_RELEASED` permanecen falsos en la configuración normal.
 
-El segundo requiere Python + Playwright + Chromium (ruta opcional `CHROMIUM_PATH`), usa perfiles efímeros y bases privadas temporales. Prueba fichas por foto/nombre, talla obligatoria, S/M separadas, seis productos a cero, resumen y confirmación, borrado del historial antiguo, ausencia de datos privados de pedidos en confirmación/almacenamiento, opiniones generales antes del footer sin reseñas en fichas, alias y fecha reales, formulario modal, opiniones pendientes y moderadas, manejo de texto sin interpretar HTML, vista estática y tamaños 320/390/768/1024/1440. Desactiva expresamente el correo real en la prueba.
+Puedes practicar el panel con un único pedido completamente ficticio, solo si lo creas expresamente:
 
-Ningún script de prueba publica la tienda ni realiza cobros. Falta probar entrega real de correos después de configurar el proveedor y buzones propios.
+```powershell
+.\.venv\Scripts\python.exe manage.py create_family_fixture --settings=config.settings_family --username TU-USUARIO-LOCAL --confirm-fictional
+```
 
-## Estructura de transferencia bancaria desactivada
+Este comando no crea opiniones ni contraseñas. Inserta un pedido claramente identificado como fixture, con cuenta sintética no operativa, sin entrega y sin correo. El panel permite **Ensayar confirmación ficticia**, registra quién hizo el ensayo y muestra sus cifras de la base como datos de prueba, nunca como dinero recibido. Los fixtures no envían correo aunque se configuren credenciales.
 
-Se ha añadido el módulo privado `server/bank_transfer.py`: variables de entorno de beneficiario/IBAN, cálculo en céntimos desde catálogo de servidor y registro de prueba con estado «Pendiente de pago». No está conectado a un checkout comercial y no hay ruta HTTP para crear transferencias ni marcar pagos. El total cero mantiene el flujo gratuito sin instrucciones bancarias. El catálogo y los pagos públicos permanecen sin cambios.
+## 8. Copias y restauración
 
-Los datos de cuenta solo se toman del entorno privado; no se han introducido cuentas reales. Las pruebas usan cuenta sintética e importes positivos en copias temporales del catálogo. Los registros pendientes de prueba se guardan en `transfer_orders`, fuera de la limpieza de pedidos demo y sin otorgar verificación de compra. Véase [TRANSFERENCIA.md](TRANSFERENCIA.md) para el contrato, bloqueos y requisitos antes de una futura activación real.
+Elige un destino privado fuera del proyecto. La copia usa la API de SQLite, no una copia inconsistente del archivo en escritura:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py backup_database --output "$env:LOCALAPPDATA\AylinShopBackups\demo-primera.sqlite3"
+```
+
+No sobrescribe copias existentes y comprueba integridad. Para restaurar, **detén servidor y worker**. La operación hace una copia previa y sustituye la base con una copia comprobada:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py restore_database --source "$env:LOCALAPPDATA\AylinShopBackups\demo-primera.sqlite3" --confirm-server-stopped
+```
+
+Para el perfil familiar añade `--settings=config.settings_family`. Una copia en el mismo disco protege de algunos errores, no de perder el equipo. Para una prueba externa hará falta una copia fuera del dispositivo en un soporte privado disponible, con cifrado/controles de acceso y retención acordada. No hemos contratado almacenamiento ni enviado copias a terceros. Las bases no llevan cifrado propio: puedes usar la protección de tu sistema (por ejemplo BitLocker de tu Windows Pro). No subas copias al repositorio.
+
+## 9. Correo y alojamiento
+
+Consulta `INTEGRACIONES.md` y `SERVICIOS_GRATUITOS.md`. Hay cola persistente para pedido al comprador, aviso al vendedor y confirmación de pago. No se procesa en el navegador ni se declara enviado por estar en cola. No se ha configurado ni probado correo externo real. Se ha preparado Resend y una alternativa SMTP Gmail con TLS para una futura prueba familiar autorizada sin comprar dominio, cuando la cuenta lo permita.
+
+El servidor está restringido a loopback. No es una configuración de Internet ni de producción. No publiques, no abras el router, no uses túneles, no lo conviertas en servicio público cambiando un único flag. HTTPS, acceso remoto, cuenta de hosting, credenciales reales y autorización de dinero siguen pendientes de revisión. No se ha contratado ningún servicio.
+
+## 10. Pruebas de esta entrega
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test shop
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+```
+
+Para la prueba de navegador opcional (dependencias gratuitas de desarrollo):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+.\.venv\Scripts\python.exe tests\django_browser.py
+```
+
+Pruebas ejecutadas en Linux con Python 3.12, Django, SQLite y Chromium: checkout y variantes, CSRF, precios separados, opiniones y moderación, permisos, login real y bloqueo, confirmaciones idempotentes, notificaciones con proveedor simulado, importación de solo lectura, persistencia, copia/restauración y vistas móviles/escritorio. Las pruebas E2E crean bases/usuarios/contraseñas ficticios solo en directorios temporales y desactivan el correo.
+
+**No se ha podido ejecutar Windows nativo en este entorno Linux.** Se han preparado rutas Windows, comandos sin activación PowerShell, lectura UTF-8 y dependencia `tzdata`, pero el arranque en tu equipo debe comprobarse allí. Tampoco se han probado correos reales, HTTPS externo ni una transferencia bancaria. Los tests anteriores del servidor legado se conservan en `tests/test_server.py`, `tests/test_bank_transfer.py` y `tests/smoke.py`; no sustituyen las pruebas de Django.

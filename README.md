@@ -1,28 +1,44 @@
-# AYLIN SHOP · Demostración
+# AYLIN SHOP · Django local, sin gastos de servicios
 
-Seis productos de ropa deportiva y mascotas, todos a **0,00 €**. Sin cobros ni envíos reales. No publicada en ningún alojamiento.
+Tienda de demostración con seis productos, todos a **0,00 €**, y panel privado Django Admin. No se ha publicado ni activado dinero real. No hay contraseñas, cuentas bancarias operativas ni claves privadas incluidas.
 
-- Fichas de producto accesibles desde foto o nombre, con talla y cantidad.
-- XS/S/M/L para ropa y arnés; talla única para correa y juguete; variantes independientes en carrito y resumen.
-- Solo confirmación del pedido actual, sin historial público ni datos de envío en la confirmación. No se guardan pedidos en el navegador.
-- Opiniones generales justo antes del footer, sin reseñas en fichas: alias público, estrellas, comentario y fecha de publicación; formulario independiente, moderación y verificación demo por sesión. Se conservan las opiniones antiguas sin inventar nombres ni fechas.
-- Integración de correo real con Resend desde servidor, desactivada hasta configurar credenciales y buzones autorizados. **No se ha enviado ningún correo real en las pruebas.**
-- Estructura de transferencia bancaria interna y desactivada: cuenta privada por entorno, cálculo en céntimos y registro pendiente solo para fixtures; ningún cobro comercial habilitado. [Detalles y límites](TRANSFERENCIA.md).
-- No existe panel web administrativo inseguro: su autenticación y autorización real quedan documentadas como pendientes. Los pagos permanecen sin cambios y desactivados.
+Conserva diseño, fotografías, fichas, tallas/variantes, carrito y la sección general de opiniones antes del footer. Ahora los pedidos y opiniones se guardan realmente en SQLite mediante Django. Las opiniones permanecen pendientes hasta que un administrador autorizado las apruebe, sin inventar reseñas ni modificar estrellas.
 
-## Abrir
+## Windows: empezar
 
-Modo estático: abre `index.html` con Live Server de VS Code (carrito y checkout locales; no guarda opiniones ni envía correo).
+Instala Python gratuito y abre PowerShell en esta carpeta:
 
-Modo de servidor de pruebas, Python 3.10+: `python3 server/app.py --port 8000` (Windows: `py server/app.py --port 8000`), luego abre `http://127.0.0.1:8000`. Solo escucha en loopback; no usar como alojamiento público.
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+```
 
-- [Guía de uso, tallas, privacidad y moderación](GUIA.md)
-- [Configurar correo, límites y administración futura](INTEGRACIONES.md)
-- [Licencias de fotografías](img/SHOP-FOTOGRAFIAS.md)
+Tienda: `http://127.0.0.1:8000/`. Panel: `http://127.0.0.1:8000/admin/`. Crea tus propias credenciales en el paso indicado; no hay una cuenta predeterminada. Para guardar opiniones usa Django, no Live Server. Si tu Python es otra versión compatible, ajusta el selector `py -3.12`.
 
-Pruebas: `python3 -m unittest discover -s tests -p 'test_*.py' -v` y `python3 tests/smoke.py` (la segunda requiere Playwright y Chromium). Todas usan datos ficticios y correo simulado/desactivado, sin cobros.
+## Incluido
 
-Se conservan la descripción y recursos antiguos sin uso. No se incluyen bases de datos, pedidos ni credenciales en el repositorio.
+- Panel con acceso real, hashes de Django, CSRF, permisos y bloqueo de intentos mediante django-axes.
+- Resumen de SQLite, tabla/detalle de pedidos, moderación y auditoría.
+- Perfil familiar separado a 1,00 € por producto, autenticado y con checkout monetario bloqueado.
+- Ensayo administrativo opcional mediante fixtures claramente ficticios; nunca acredita dinero real ni envía correo.
+- Cola persistente con Resend/SMTP preparados, desactivados sin configuración. No se ha probado correo real.
+- Importación de solo lectura de datos del servidor anterior, copias y restauración.
+- Bases y claves privadas fuera del repositorio, sin historial público ni PII de pedidos en el navegador.
+
+Documentación:
+- [Guía completa, Windows, panel y recuperación](GUIA.md)
+- [Correo y requisitos pendientes](INTEGRACIONES.md)
+- [Prueba familiar y transferencia bloqueada](TRANSFERENCIA.md)
+- [Investigación de opciones gratuitas](SERVICIOS_GRATUITOS.md)
+- [Borrador de conservación y eliminación](POLITICA_DATOS.md)
+- [Fuentes/licencias de las fotografías](img/SHOP-FOTOGRAFIAS.md)
+
+Pruebas Django: `.venv/bin/python manage.py test shop` (Windows: `.venv\Scripts\python.exe`). Prueba integral: `python tests/django_browser.py`, con Playwright y Chromium disponibles. Ver instrucciones en GUIA.md.
+
+Probado en Linux y Chromium; Windows nativo y servicios externos quedan pendientes de comprobación. No se ha contratado hosting, dominio ni servicio de pago. La aplicación está limitada a acceso local y no debe exponerse mediante túneles/router como comercio.
 
 ## Descripción original conservada
 

@@ -9,3 +9,8 @@
 __pycache__/
 *.pyc
 .venv/
+
+staticfiles/
+*.log
+secret.key
+backups/

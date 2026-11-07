@@ -10,6 +10,8 @@
   const variantOf = (product, size) => product?.variants.find(v => v.size === size);
   let toastTimer, activeProduct, previousFocus, requestKey;
   let submitting = false;
+  const familyMode = window.AYLIN_MODE === 'family';
+  let checkoutEnabled = !familyMode;
   function node(tag, text, cls) {
     const e = document.createElement(tag);
     if (text !== undefined) e.textContent = text;
@@ -47,17 +49,33 @@
       if (!response.ok) throw new Error();
       const data = await response.json();
       if (typeof data.csrf !== 'string') throw new Error();
-      $('#checkout-mode').textContent = data.mailConfigured
-        ? 'Servidor de pruebas local: el pedido se registra de forma privada. Se intentarán enviar correos reales solo a destinatarios de prueba autorizados; utiliza uno de esos correos y datos ficticios de envío.'
-        : 'Servidor de pruebas local: el pedido se registra de forma privada. El correo no está configurado y no se enviarán mensajes. Utiliza datos ficticios.';
+      checkoutEnabled = data.checkoutEnabled !== false;
+      if (familyMode) {
+        $('#checkout-mode').textContent = checkoutEnabled ? 'Prueba familiar autenticada, sin entrega de productos. El pago nunca se confirma automáticamente.' : 'Perfil familiar local: 1,00 € por unidad. El checkout monetario está bloqueado. No realices transferencias.';
+        document.querySelector('.demo-banner').textContent = 'PRUEBA FAMILIAR LOCAL · SIN ENVÍO · TRANSFERENCIAS REALES BLOQUEADAS';
+        $('#checkout-title').textContent = 'Prueba familiar privada';
+        const radio = document.querySelector('[name="payment"]'); radio.value = 'bank_transfer'; radio.disabled = !checkoutEnabled;
+        radio.parentElement.lastChild.textContent = ' Transferencia bancaria · preparación de prueba familiar';
+        const footnote = document.querySelector('.hero-footnote'); footnote.textContent = 'Perfil familiar independiente: seis productos de prueba a 1,00 € por unidad. Sin entrega. No se activa ningún cobro.';
+        const form = node('form'); form.method = 'post'; form.action = '/accounts/logout/';
+        const csrf = node('input'); csrf.type='hidden'; csrf.name='csrfmiddlewaretoken'; csrf.value=data.csrf;
+        const logout = node('button','Cerrar sesión familiar','text-button'); logout.type='submit'; form.append(csrf,logout); document.querySelector('footer').append(form);
+      } else {
+        $('#checkout-mode').textContent = data.mailConfigured ? 'Servidor Django local: pedido privado. Los avisos quedan en cola hasta procesarse; aceptación y entrega se comprueban por separado.' : 'Servidor Django local: registro privado y avisos en cola. Correo sin configurar; no se envían mensajes.';
+      }
+      renderCart();
       return data;
     }).catch(() => {
       $('#checkout-mode').textContent = 'No se puede conectar al servidor de pruebas. No confirmaremos un pedido sin su respuesta.';
       return null;
     }) : Promise.resolve(null);
   async function api(path, body) {
-    const session = await apiReady;
-    if (!session) throw new Error('No se puede acceder al servidor. Recarga para restablecer la sesión; no se ha mostrado una confirmación sin respuesta.');
+    const initial = await apiReady;
+    if (!initial) throw new Error('No se puede acceder al servidor. Recarga para restablecer la sesión; no se ha mostrado una confirmación sin respuesta.');
+    // Django rota CSRF al entrar/salir del panel: obtener token vigente antes de escribir.
+    const fresh = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
+    if (!fresh.ok) throw new Error('No se puede renovar la sesión autorizada. Vuelve a iniciar sesión y recarga.');
+    const session = await fresh.json();
     const response = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf }, body: JSON.stringify(body) });
     const result = await response.json();
@@ -85,6 +103,7 @@
     activeProduct = product; previousFocus = trigger;
     $('#product-image').src = product.image; $('#product-image').alt = product.alt;
     $('#product-image').width = product.width; $('#product-image').height = product.height;
+    document.querySelector('.detail-price').textContent = `${money(product.priceMinor)} · precio de prueba`;
     $('#product-title').textContent = product.name; $('#product-description').textContent = product.description;
     $('#product-category').textContent = catalog.categories[product.category];
     $('#product-stock').textContent = product.variants.some(v => v.available) ? 'En stock · disponibilidad de demostración' : 'Sin stock · demostración';
@@ -211,18 +230,21 @@
     for (const item of items) {
       const row = node('article', undefined, 'cart-line'); row.dataset.cartId = keyOf(item.id, item.size);
       const img = node('img'); img.src = item.product.image; img.alt = ''; img.width = 70; img.height = 85;
-      const info = node('div'); info.append(node('h3', item.product.name), node('p', `Talla: ${item.size}`, 'variant-label'), node('span', '0,00 € / unidad', 'line-price'));
+      const info = node('div'); info.append(node('h3', item.product.name), node('p', `Talla: ${item.size}`, 'variant-label'), node('span', `${money(item.product.priceMinor)} / unidad`, 'line-price'));
       const quantity = node('div', undefined, 'quantity'); quantity.append(quantityButton(item, -1, '−'), node('output', item.quantity), quantityButton(item, 1, '+')); info.append(quantity);
       const remove = node('button', 'Eliminar', 'remove-button'); remove.type = 'button'; remove.setAttribute('aria-label', `Eliminar ${item.product.name}, talla ${item.size}`);
       remove.addEventListener('click', () => { if (submitting) return; cart = cart.filter(i => keyOf(i.id, i.size) !== keyOf(item.id, item.size)); changedCart(); $('#cart-total').focus(); announce('Variante eliminada del carrito.'); });
       row.append(img, info, remove); target.append(row);
     }
-    $('#cart-total').textContent = money(0); $('#cart-total').tabIndex = -1;
-    $('#checkout-start').disabled = !items.length || submitting; $('#submit-order').disabled = !items.length || submitting;
+    const total = items.reduce((sum, item) => sum + item.product.priceMinor * item.quantity, 0);
+    $('#cart-total').textContent = money(total);
+    $('#checkout-total').textContent = money(total);
+    $('#submit-order').textContent = `${familyMode ? 'Pedido familiar de prueba' : 'Confirmar pedido demo'} · ${money(total)}`; $('#cart-total').tabIndex = -1;
+    $('#checkout-start').disabled = !items.length || submitting; $('#submit-order').disabled = !items.length || submitting || !checkoutEnabled;
     $('#cart-clear').hidden = !items.length;
     if (!items.length) $('#checkout').hidden = true;
     $('#checkout-summary').replaceChildren();
-    items.forEach(item => { const row = node('div', undefined, 'summary-line'); row.append(node('span', `${item.product.name} · Talla ${item.size} × ${item.quantity}`), node('span', money(0))); $('#checkout-summary').append(row); });
+    items.forEach(item => { const row = node('div', undefined, 'summary-line'); row.append(node('span', `${item.product.name} · Talla ${item.size} × ${item.quantity}`), node('span', money(item.product.priceMinor * item.quantity))); $('#checkout-summary').append(row); });
     $('#checkout-summary').append(node('p', 'Envío de prueba: 0,00 €', 'fine-print'));
   }
   function closeConfirmation() {
@@ -242,28 +264,34 @@
   });
   $('#checkout-form').addEventListener('input', () => { if (!submitting) requestKey = null; });
   function mailStatus(status) {
-    return ({ accepted: 'solicitud aceptada por el proveedor; entrega en buzón aún no confirmada', not_configured: 'no enviado: proveedor no configurado o desactivado', recipient_not_allowed: 'no enviado: destinatario de prueba no autorizado', pending: 'pendiente de confirmación del proveedor', unconfirmed: 'envío no confirmado por el proveedor; no se afirma que haya llegado', local: 'no enviado en modo local' })[status] || 'estado no confirmado';
+    return ({ queued: 'en cola, todavía no aceptado por un proveedor', sending: 'solicitud en curso, aún no confirmada', needs_reconciliation: 'resultado incierto: requiere comprobación manual, sin reenvío automático', fixture_no_mail: 'no enviado: fixture ficticio', accepted: 'solicitud aceptada por el proveedor; entrega en buzón aún no confirmada', not_configured: 'no enviado: proveedor no configurado o desactivado', recipient_not_allowed: 'no enviado: destinatario de prueba no autorizado', pending: 'pendiente de confirmación del proveedor', unconfirmed: 'envío no confirmado por el proveedor; no se afirma que haya llegado', local: 'no enviado en modo local' })[status] || 'estado no confirmado';
   }
   $('#checkout-form').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget;
     if (submitting || !form.reportValidity()) return;
     const selected = lines(); if (!selected.length) return;
-    if (window.AYLIN_PAYMENTS.mode !== 'demo' || selected.some(item => item.product.priceMinor !== 0 || !variantOf(item.product, item.size)?.available)) { $('#checkout-error').textContent = 'Solo se permiten variantes gratuitas y disponibles en esta demo.'; return; }
+    if (!checkoutEnabled) { $('#checkout-error').textContent = 'El checkout monetario familiar permanece bloqueado.'; return; }
+    if (window.AYLIN_PAYMENTS.mode !== 'demo' || selected.some(item => item.product.priceMinor !== (familyMode ? 100 : 0) || !variantOf(item.product, item.size)?.available)) { $('#checkout-error').textContent = 'Solo se permiten variantes gratuitas y disponibles en esta demo.'; return; }
     const data = new FormData(form); const fields = ['name', 'email', 'phone', 'address', 'postal', 'city', 'province'];
     const customer = Object.fromEntries(fields.map(key => [key, String(data.get(key) || '').trim()]));
     if (Object.values(customer).some(v => !v) || customer.name.length < 3 || customer.address.length < 5 || customer.city.length < 2 || customer.province.length < 2) { $('#checkout-error').textContent = 'Completa los campos con datos de prueba válidos, sin dejar solo espacios.'; return; }
-    if (data.get('demoConsent') !== 'on' || data.get('payment') !== 'demo') return;
+    if (data.get('demoConsent') !== 'on' || data.get('payment') !== (familyMode ? 'bank_transfer' : 'demo')) return;
     submitting = true; renderCart(); form.setAttribute('aria-busy', 'true'); $('#checkout-error').textContent = '';
     requestKey ||= globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-demo`;
     const items = selected.map(({ id, size, quantity }) => ({ id, size, quantity }));
     try {
-      const receipt = window.AYLIN_BACKEND ? await api('/api/orders', { items, customer, demoConsent: true, requestKey }) : { id: `LOCAL-DEMO-${requestKey}`, items, totalMinor: 0, demo: true, mail: { buyer: { status: 'local' }, seller: { status: 'local' } } };
-      if (!receipt.demo || receipt.totalMinor !== 0 || !Array.isArray(receipt.items) || typeof receipt.id !== 'string') throw new Error('Respuesta no válida. No se puede confirmar el pedido.');
+      const receipt = window.AYLIN_BACKEND ? await api('/api/orders', { items, customer, demoConsent: true, requestKey, ...(familyMode ? { paymentMethod: 'bank_transfer' } : {}) }) : { id: `LOCAL-DEMO-${requestKey}`, items, totalMinor: 0, demo: true, mail: { buyer: { status: 'local' }, seller: { status: 'local' } } };
+      const expectedTotal = selected.reduce((sum, item) => sum + item.product.priceMinor * item.quantity, 0);
+      if (!receipt.demo || receipt.totalMinor !== expectedTotal || !Array.isArray(receipt.items) || typeof receipt.id !== 'string') throw new Error('Respuesta no válida. No se puede confirmar el pedido.');
       closeConfirmation();
-      $('#confirmation-message').textContent = `Pedido ${receipt.id} · Total: 0,00 €. ${window.AYLIN_BACKEND ? 'Registro privado de demostración confirmado por el servidor.' : 'Prueba local sin registro en servidor.'}`;
+      $('#confirmation-message').textContent = `Pedido ${receipt.id} · Total: ${money(receipt.totalMinor)}. ${window.AYLIN_BACKEND ? 'Registro privado de demostración confirmado por el servidor.' : 'Prueba local sin registro en servidor.'}`;
       const list = node('ul');
-      receipt.items.forEach(item => list.append(node('li', `${byId.get(item.id)?.name || 'Producto'} · Talla ${item.size} × ${item.quantity} · 0,00 €`)));
+      receipt.items.forEach(item => list.append(node('li', `${byId.get(item.id)?.name || 'Producto'} · Talla ${item.size} × ${item.quantity} · ${money((byId.get(item.id)?.priceMinor || 0) * item.quantity)}`)));
       $('#confirmation-items').append(list);
+      if (familyMode && receipt.bankTransfer) {
+        const bank = receipt.bankTransfer;
+        $('#confirmation-items').append(node('p', `Pendiente de pago · Beneficiario: ${bank.beneficiary} · IBAN: ${bank.iban} · Importe: ${money(receipt.totalMinor)} · Concepto: ${bank.reference}`));
+      }
       $('#confirmation-mail').textContent = `Correo comprador: ${mailStatus(receipt.mail?.buyer?.status)}. Correo vendedor: ${mailStatus(receipt.mail?.seller?.status)}.`;
       cart = []; changedCart(); form.reset();
       $('#confirmation').hidden = false; $('#confirmation-title').focus(); $('#confirmation').scrollIntoView({ block: 'start' });

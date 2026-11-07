@@ -1,73 +1,37 @@
-# Transferencia bancaria · Estructura desactivada
+# Transferencia y perfil familiar · Preparación local, sin dinero real
 
-## Qué incluye esta versión
+## Perfiles y datos
 
-`server/bank_transfer.py` incorpora configuración privada, validación de cuenta, cálculo de importes desde un catálogo del servidor y un registro de pedidos de transferencia con estado **Pendiente de pago** (`pending_payment`). Es una estructura interna para preparar y probar la futura integración: **no es un método comercial activo**.
+La tienda demo normal conserva seis precios **0,00 €** y checkout gratuito. Django sirve el catálogo del perfil `config.settings_family` con **1,00 €** por unidad, sin cambiar el JSON ni el JavaScript estático base. Ese perfil exige login y usa otra base, clave y cookie. Una unidad de cada producto sumaría 6,00 €; las cantidades se calculan en servidor y no se acepta el total del navegador.
 
-Los seis productos del catálogo real siguen a **0,00 €**. El HTML, CSS, fichas, tallas, carrito, opiniones, checkout gratuito y configuración pública de PayPal/Apple Pay/transferencia no cambian. El servidor añade una comprobación explícita para que el checkout gratuito rechace precios positivos o importes no enteros en lugar de confirmarlos a cero por error.
+`FAMILY_CHECKOUT_ENABLED=False` y `FAMILY_MONEY_RELEASED=False` mantienen bloqueado el checkout familiar. No se habilitan mediante variables del entorno. No publiques esta versión ni realices transferencias. Cambiar los precios del perfil o introducir una cuenta no equivale a autorizar dinero real.
 
-## Bloqueos que siguen vigentes
+## Estructura implementada
 
-- La transferencia permanece desactivada por defecto.
-- `BankTransferService.available_for_total(...)` devuelve falso en esta entrega, incluso con importe positivo y cuenta configurada. No se anuncia ningún método disponible para cobrar.
-- `prepare_pending(...)` rechaza la operación comercial. Solo admite `test_only=True` desde código interno de pruebas; no hay ruta HTTP que acepte ese parámetro o permita invocar esa función.
-- Todos los registros de esta estructura llevan `test_only=1`, `commercial=false`, prefijo `TEST-TRANSFER-` y aviso explícito de no transferir. La base rechaza registros comerciales y estados diferentes de pendiente.
-- Ninguna ruta pública permite consultar las instrucciones, listar pedidos o marcar pagos. Las rutas administrativas existentes continúan denegando acceso.
-- No se envían correos ni se realizan llamadas a un banco desde este módulo.
+Los modelos Django soportan estados demo_confirmed, pending_payment, paid y cancelled. El pedido registra líneas, tallas, cantidades, precios y total en céntimos; entorno; comprador privado; método y copia de las instrucciones bancarias del pedido. Una solicitud repetida de la misma sesión conserva su pedido y no duplica notificaciones. Reutilizarla con datos distintos se rechaza.
 
-`test_only` no es un mecanismo de autenticación: es una herramienta interna de pruebas, no una opción de cliente, terminal de cobro o sustituto de la autorización pendiente.
+Las variables privadas futuras son `SHOP_BANK_BENEFICIARY` y `SHOP_BANK_IBAN`. No hay ningún dato bancario real configurado o incluido en GitHub. La validación de formato/checksum no acredita que una cuenta exista o pertenezca a su titular. Las instrucciones de cuenta solo se devolverían al comprador de ese pedido tras registro en servidor y si se autorizase expresamente la futura activación.
 
-## Configuración privada prevista
+El banco no está integrado para leer saldos. No hay pagos automáticos. Las rutas públicas no pueden marcar pagado ni consultar pedidos ajenos. El panel comprueba autenticación, permiso de consulta y permiso especial `confirm_transfer`; requiere POST, CSRF, confirmación y motivo. La actualización y su auditoría son transaccionales y no se repiten al confirmar dos veces. Se prepara el aviso paid_buyer solo tras una transición válida.
 
-| Variable de entorno del servidor | Uso |
-| --- | --- |
-| `SHOP_BANK_TRANSFER_ENABLED` | Por defecto ausente/falso. `true` permite validar configuración en las pruebas internas, pero **no habilita pagos comerciales**. |
-| `SHOP_BANK_BENEFICIARY` | Titular/beneficiario de la cuenta. Solo entorno privado, nunca HTML/JS. |
-| `SHOP_BANK_IBAN` | IBAN privado. Se normalizan espacios y mayúsculas y se comprueban formato, longitud por país admitido y checksum módulo 97. |
+La confirmación normal de transferencias monetarias sigue bloqueada con FAMILY_MONEY_RELEASED=False. Solo puede ensayarse sobre un pedido marcado explícitamente `is_fixture=True`, sin dinero, con cuenta sintética y notificaciones externas bloqueadas. Esto no acredita recepción real ni representa una venta. El panel identifica estos ensayos visiblemente.
 
-No se han configurado valores reales. No debes facilitar tu IBAN personal para probar esta entrega. Los datos bancarios ficticios están únicamente en `tests/test_bank_transfer.py`, con BBAN compuesto por ceros: no corresponden a una cuenta operativa.
+## Ensayo local opcional del panel
 
-La validación de formato/checksum **no demuestra que la cuenta exista, pertenezca al beneficiario o permita recibir una transferencia**. La lista de países admitidos está explícita en el módulo y necesitará revisión para los países de venta definitivos. Los errores y la representación del objeto de configuración no incluyen cuenta ni beneficiario.
+Sigue primero los pasos de GUIA.md para migrar la base familiar y crear un administrador y usuario propios. Después puedes crear expresamente un fixture con `manage.py create_family_fixture --settings=config.settings_family --username TU-USUARIO --confirm-fictional`.
 
-Para una futura cuenta de Aylin bastará sustituir las variables privadas para nuevos pedidos, después de implementar y autorizar la activación comercial. Cambiar las variables ahora no activa el checkout de transferencia. En el funcionamiento real futuro el comprador necesariamente verá el IBAN que debe utilizar, pero solo en las instrucciones de su pedido autorizado, no como configuración incrustada en el sitio o publicada en GitHub.
+Este fixture añade los seis productos a 1,00 € a SQLite, con datos de envío y cuenta ficticios, sin enviar correo. No crea reseñas ni contraseñas. En el panel podrás abrir el pedido y usar **Ensayar confirmación ficticia**. La auditoría indicará tu usuario y fecha; el resumen refleja filas reales de la base, pero claramente como ensayos, no como dinero bancario recibido.
 
-## Cálculo y registro de prueba
+Los tests de Django habilitan los ajustes únicamente en memoria con una cuenta sintética, comprueban el registro pendiente de 6,00 € y la transición autorizada/auditada, y descartan la base temporal al finalizar. No modifican los ajustes normales ni ejecutan ninguna transferencia.
 
-`quote_items` solo admite identificadores, tallas y cantidades, y toma precios/nombres del catálogo de servidor. Rechaza precios o totales enviados por el cliente, cantidades incorrectas y variantes no disponibles. Utiliza céntimos enteros, moneda EUR y un límite técnico de prueba; no usa coma flotante. Los precios positivos existen exclusivamente en copias de catálogo construidas por los tests, sin modificar `data/catalogo.json`.
+## Conservación
 
-El resultado de prueba de `prepare_pending` incluye:
+Los registros Django persisten al cerrar Chrome y el servidor; no se aplica la limpieza automática de 24 horas. Las bases y copias permanecen fuera de GitHub. Hay comandos de copia consistente y restauración comprobada. Es necesario decidir contigo retención y copias fuera del equipo antes de una prueba externa; no se usa una carpeta temporal como alojamiento comercial.
 
-- Identificador único de pedido y estado **Pendiente de pago**.
-- Productos, tallas, cantidades, precios unitarios y subtotales del catálogo de servidor.
-- Beneficiario e IBAN de prueba.
-- Importe exacto en céntimos y texto decimal, moneda EUR.
-- Concepto de transferencia igual al identificador único del pedido.
-- Aviso de fixture ficticio, sin pago confirmado y sin realizar ninguna transferencia.
+El módulo anterior `server/bank_transfer.py` se conserva como estructura legada y para sus pruebas; no es la entrada de Django ni una vía alternativa para habilitar pagos. Los fixtures antiguos pueden preservarse en un archivo lógico privado mediante `import_legacy`; no se convierten en pedidos comerciales.
 
-Se guarda de forma transaccional en la tabla privada `transfer_orders`, en la misma ubicación protegida fuera del checkout que el resto del servidor. El contenido privado conserva también los datos ficticios de envío. No usa localStorage, no crea un historial público ni introduce datos en archivos públicos.
+## Qué falta para los 6,00 € reales
 
-La clave de idempotencia queda vinculada a la sesión. La repetición de una solicitud conserva el mismo identificador y las instrucciones originales, aunque después cambie la configuración bancaria o el precio del fixture. Cambiar cantidades o destinatario con la misma clave produce un error. Las variantes, moneda, importe y cuenta quedan congelados en el registro, no se recalculan silenciosamente después de confirmar.
+Aprobación separada del entorno externo y del dinero; plataforma gratuita comprobada sin tarjeta/cargos; HTTPS, cookies de producción y acceso restringido; ciclo fiable de tareas de correo; copias y recuperación; cuentas privadas; condiciones y retención de datos; nueva revisión de los bloqueos de la versión antes de autorizar la cuenta de Aylin/tu cuenta de prueba. No solicitamos tu IBAN en esta fase.
 
-Esta tabla está separada de los pedidos gratuitos de prueba: no se borra con la limpieza de 24 horas, no se utiliza para conceder la marca de comprador verificado y no modifica los datos existentes. Las pruebas usan directorios temporales y los eliminan al finalizar; no dejan pedidos ficticios en la base de la tienda ni en el ZIP.
-
-## Qué falta para utilizar transferencias reales
-
-1. Revisar y autorizar explícitamente una versión comercial. Eliminar los bloqueos de esta demo exige cambios de código y revisión; ninguna variable basta para activarla.
-2. Implementar autenticación y autorización de administradores en servidor. Solo un administrador con permiso podrá confirmar recepción tras comprobar el banco. Registrar actor, fecha, importe, referencia y motivo; incluir controles contra repetición y concurrencia. No aceptar como prueba de pago una acción del comprador ni una captura de pantalla por sí sola.
-3. Diseñar e implementar estados y transiciones comerciales: pendiente, pagado, cancelado, caducado y, cuando proceda, devolución. La tabla actual admite únicamente pendiente/test; se necesita una migración revisada, no actualizar su estado desde el navegador.
-4. Exponer el futuro checkout positivo y sus instrucciones únicamente tras validar el pedido y su titularidad. Mantener los datos bancarios en servidor; no ofrecer una consulta pública por número de pedido. El modo estático seguirá sin poder crear pedidos comerciales.
-5. Confirmar precios, impuestos, envío, descuentos, plazos de pago e inventario reales; calcular el total definitivo en servidor. El cálculo actual de fixtures es un subtotal de artículos, no un motor fiscal o logístico.
-6. Usar almacenamiento duradero fuera de carpetas temporales, copias protegidas, recuperación, auditoría y una política de conservación adecuada para pedidos comerciales, separada de demos.
-7. HTTPS, sesiones/cookies de producción, infraestructura, protección de datos y condiciones comerciales. Verificar la cuenta y beneficiario que autorice Aylin. El servidor actual solo escucha en loopback y no debe publicarse como comercio.
-8. Adaptar las notificaciones y la consulta privada de pedidos al estado de transferencia: recibir un pedido pendiente o enviar un correo nunca debe marcarlo como pagado.
-
-## Pruebas ejecutables
-
-```sh
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 tests/smoke.py
-```
-
-La batería del servidor incluye ocho pruebas nuevas de transferencia y las ocho existentes. Comprueba cuenta privada/desactivada, checksum, céntimos exactos, tallas, rechazo de importes del cliente, registro pendiente persistente, idempotencia, cuenta/importe congelados, aislamiento de sesión, no borrado por limpieza demo, bloqueo de estado pagado y ausencia de instrucciones/cobros en la API pública gratuita. Todos los importes positivos, beneficiarios y cuentas son fixtures ficticios; no hay conexiones a bancos ni correos reales.
-
-La prueba de Chromium mantiene la comprobación del pedido con los seis productos gratuitos, tallas, carrito, confirmación privada, opiniones generales, moderación, modo estático y cinco tamaños de pantalla. No activa ninguna integración de pago.
+Con el entorno aprobado, el comprador tendría instrucciones de su pedido; tú comprobarías personalmente BBVA y confirmarías con tu cuenta administrativa. Un correo o una captura aportada por el comprador nunca deben considerarse por sí solos prueba de recepción bancaria.

@@ -1,0 +1,5 @@
+{% extends "admin/change_form.html" %}
+{% block object-tools-items %}
+{% if can_confirm %}{% if money_released %}<li><a href="{% url 'admin:shop_order_confirm_payment' original.pk %}">{% if original.is_fixture %}Ensayar confirmación ficticia{% else %}Marcar como pagado{% endif %}</a></li>{% else %}<li>Confirmación monetaria bloqueada</li>{% endif %}{% endif %}
+{% if can_cancel %}<li><a href="{% url 'admin:shop_order_cancel' original.pk %}">Cancelar pedido</a></li>{% endif %}
+{{ block.super }}{% endblock %}
