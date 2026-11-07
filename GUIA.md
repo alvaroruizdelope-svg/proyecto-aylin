@@ -1,33 +1,56 @@
-# Aylin Nails · Guía de la demo
+# AYLIN SHOP · Guía de la demostración
 
-Web estática sin instalaciones ni dependencias externas. La galería contiene 14 fotografías de Pexels almacenadas localmente y optimizadas en WebP; fuentes y licencia en `img/FOTOGRAFIAS.md`. Inicio y Novedades también utilizan fotografías de esta selección. La ilustración de la sección Sobre mí se conserva como espacio provisional para la foto de Aylin. Ninguna imagen se presenta como trabajo de Aylin. No hay analítica, cookies publicitarias, backend ni reservas automáticas.
+Tienda estática en HTML, CSS y JavaScript. Exactamente seis productos provisionales, todos a **0,00 €**: leggings deportivos, top deportivo, camiseta deportiva, correa para perro, arnés ajustable y juguete para mascotas. No hay ventas, pagos, correos ni envíos reales. Sin frameworks, dependencias de ejecución, rastreadores ni SDK de pagos.
 
-## Abrir la web
+## Abrir en tu ordenador
 
-En VS Code abre la carpeta `proyecto-aylin`. Con la extensión Live Server instalada, haz clic derecho en `index.html` → **Open with Live Server**. Abre la dirección local que muestre la extensión en Chrome. También puedes abrir directamente `index.html` en Chrome; no hay módulos ni peticiones externas necesarias para mostrar el contenido.
+Descarga y extrae el ZIP de GitHub. Abre la carpeta extraída en VS Code, pulsa con el botón derecho en `index.html` y selecciona **Open with Live Server**. También puedes abrir `index.html` directamente en Chrome, aunque las reglas de almacenamiento con archivos locales dependen del navegador. Todos los recursos visuales cargan desde `img/`; no requieren acceso a Pexels. Los enlaces de atribución sí necesitan internet si decides abrirlos.
 
-## Cambiar contenido
+## Probar el flujo completo
 
-- **WhatsApp:** modifica únicamente `WHATSAPP_NUMBER` al principio de `js/script.js`. Usa el formato internacional sin `+`, espacios ni guiones. Todos los enlaces se generan desde esa variable. Los mensajes se codifican con `encodeURIComponent`; abrir el enlace no envía nada ni confirma la reserva. Actualmente apunta al número de prueba autorizado.
-- **Servicios y precios:** edita los objetos de `SERVICES` en `js/script.js`: `name`, `description` y `price`. El mensaje de WhatsApp toma automáticamente el nombre del servicio.
-- **Galería:** edita `GALLERY` en ese mismo archivo. `image` es la ruta relativa desde `index.html`; `title` es el título, `alt` describe la imagen, y `price` es un número en euros de ejemplo, `author` y `source` conservan los créditos, `width` y `height` son las dimensiones del archivo, y `category` debe ser `acrilicas`, `manicura`, `disenos` o `pedicura`. Los filtros, contador y ampliación se actualizan automáticamente.
-- **Fotografías:** guarda imágenes propias o autorizadas en `img/` (preferiblemente WebP/JPEG optimizados). Cambia las rutas en `GALLERY` y `NEWS`. Para portada y presentación, cambia `src`, `alt`, `width` y `height` de las imágenes correspondientes en `index.html`. Actualiza las etiquetas de demostración cuando proceda; no presentes imágenes ajenas como trabajos propios.
-- **Novedades:** añade un objeto a `NEWS`: `title`, `date` en formato `AAAA-MM-DD`, `label`, `image`, `alt`, `description` y opcionalmente `content`. Solo se muestra «Leer más» si hay contenido adicional. Las fechas y publicaciones actuales están marcadas como ejemplos.
-- **Colores y fuentes:** variables al principio de `css/estilos.css`. Se utilizan fuentes del sistema, sin descargas externas.
-- **Textos, contacto y navegación:** `index.html`. Al confirmar Instagram, sustituye el texto pendiente por un enlace real y añádelo al pie. No hay enlaces sociales falsos.
+1. Abre el catálogo y prueba los filtros Todos, Ropa deportiva y Mascotas.
+2. Añade los seis productos. Cada precio, subtotal, envío demo y total es 0,00 €.
+3. En Carrito cambia cantidades, elimina un producto y vuelve a añadirlo. El inventario demo permite hasta 20 unidades por producto; no representa existencias reales.
+4. Pulsa **Continuar al pedido demo**. El resumen debe mostrar los seis productos.
+5. Pulsa **Rellenar con datos ficticios de ejemplo**. Puedes editar estos datos, pero no introduzcas datos personales reales. Marca la confirmación de demostración.
+6. Pulsa **Confirmar pedido demo**. Se genera un identificador `DEMO-…`, se vacía el carrito y aparece una confirmación sin cobro.
+7. En **Pedidos de demostración** abre el detalle. Muestra productos, cantidades, total, datos ficticios y dos avisos etiquetados como SIMULADO, NO ENVIADO (comercio y comprador).
+8. Recarga para comprobar el historial de la pestaña. Puedes borrarlo con su botón. No es un panel administrativo: solo muestra los pedidos de prueba de esa pestaña.
 
-## Datos que pedir a Aylin
+## Persistencia y límites
 
-Nombre y marca definitivos, presentación aprobada, fotografía y permiso de uso, servicios y descripciones reales, precios y condiciones, número comercial de WhatsApp, ubicación, horario, Instagram, fotografías propias y autorizaciones para publicar. Confirmar también la gestión manual de citas, cancelaciones y los datos del titular necesarios para preparar aviso legal y privacidad con asesoramiento adecuado.
+- Carrito: `localStorage`, clave `aylin-shop-demo-cart-v1`; solo identificadores de producto y cantidades. Se conserva al recargar. Se vacía con su botón.
+- Historial y datos ficticios: `sessionStorage`, clave `aylin-shop-demo-orders-v1`; hasta 20 pedidos, últimos primero. Normalmente desaparece al cerrar la pestaña; la restauración de sesiones del navegador puede conservarlo. Utiliza **Borrar historial de esta pestaña** para eliminarlo explícitamente.
+- Si el almacenamiento está bloqueado, hay una alternativa en memoria y se muestra un aviso. Los datos no se conservan al recargar en ese caso.
+- No se transmiten formularios ni se realizan peticiones a APIs. Los avisos son representación local, no una bandeja de correo ni una cola real de notificaciones.
+- Validación local adecuada para probar la demo; no protege un comercio real. Los datos de un navegador siempre pueden manipularse. No sirve como inventario, contabilidad ni registro comercial.
 
-Antes de publicar: sustituir las ilustraciones y textos provisionales, confirmar todos los datos y mensajes de contacto, preparar la información legal real, comprobar nuevamente móvil y escritorio y decidir cuándo retirar `noindex`. Esta entrega no publica ni configura ningún despliegue.
+## Archivos y edición
 
-## Comprobaciones realizadas
+- `index.html`: portada, secciones, formulario, contacto y apartados legales provisionales.
+- `css/estilos.css`: variables de color y tipografía al principio. Paleta blanco cálido, grafito, oliva y arena.
+- `js/catalogo.js`: seis productos y categorías. `priceMinor` está expresado en céntimos y debe permanecer en **0** en la demo. `stockQuantity` es inventario simulado (20 inicialmente); al establecerlo en 0 aparecen «Sin stock · demo» y el botón desactivado. El carrito elimina productos sin stock al recargar. No se reduce inventario tras los pedidos porque es una demo local sin gestión de existencias compartida.
+- `js/script.js`: catálogo, filtros, carrito, validación, pedidos y avisos simulados. Los textos introducidos se muestran con `textContent`, nunca como HTML.
+- `js/integraciones.js`: contrato de ampliación para pagos; proveedores desactivados. Solicitar una sesión de pago produce un error explicativo y no inicia ninguna comunicación.
+- `img/shop-*.webp`, `img/shop-icon.svg`: imágenes activas de la tienda. Las seis fotos son referencias de Pexels, no fotografías de mercancía confirmada. Licencias y autores en `img/SHOP-FOTOGRAFIAS.md` y en la sección de créditos de la página.
+- `INTEGRACIONES.md`: requisitos para pagos, backend y correo futuros.
+- `tests/smoke.py`: prueba automatizada integral.
+- Se conserva el README y los recursos anteriores sin uso para preservar el trabajo previo. La interfaz de tienda no carga imágenes, scripts ni estilos de manicura.
 
-Validación con Chromium automatizado sobre un servidor local temporal: seis servicios, tres novedades, once enlaces de WhatsApp con destino y mensajes correctos, cinco filtros, ampliación y navegación de imágenes, cierre por botón y Escape, retorno del foco, lectura ampliada de novedades, menú móvil y movimiento reducido. Todas las imágenes locales cargaron y no se registraron errores JavaScript. Sin desbordamiento horizontal a 320, 375, 390, 768, 1024 y 1440 píxeles. También se comprobaron rutas, anclas internas, IDs únicos y un único H1. No se enviaron mensajes ni se verificó la apertura de la aplicación externa de WhatsApp.
+Para ampliar el catálogo: añade objetos en `products` de `js/catalogo.js`, con ID único y `priceMinor: 0`. Para categorías nuevas, añade su etiqueta al mapa `categories` y un botón con `data-filter` en HTML (y opcionalmente un enlace `data-category`). Sustituye las fotos por imágenes del producto real con permiso de uso, actualizando `image`, `alt`, `width`, `height`, `author` y `source`.
 
-## Actualización de galería fotográfica
+## Comprobación automatizada
 
-14 fotos locales con nombre de servicio y precio orientativo provisional en euros. Todos los precios se presentan como ejemplos, nunca tarifas oficiales. La ampliación muestra servicio, precio, aviso de demo, autor enlazado a Pexels y botón WhatsApp específico. Mantener estas aclaraciones y la documentación de licencias al sustituir fotografías.
+En un entorno de desarrollo con Python, Playwright y Chromium instalados:
 
-Validación de esta actualización: 14 fotografías cargadas sin peticiones externas; cinco filtros (4 manicuras, 4 acrílicas, 3 diseños y 3 pedicuras); nombres, precios y destinos WhatsApp de las 14 ampliaciones; créditos enlazados; navegación con flechas, Escape y deslizamiento; foco devuelto al cerrar; menú móvil; anchos de 320, 390, 768, 1024 y 1440 píxeles sin desbordamiento. Sin errores JavaScript ni HTTP en Chromium. No se enviaron mensajes.
+```sh
+python3 tests/smoke.py
+```
+
+El navegador predeterminado es `/usr/bin/chromium`; puedes indicar otra ruta mediante `CHROMIUM_PATH`. Es una dependencia de pruebas, no de la tienda ni de Live Server. La prueba utiliza un servidor temporal de loopback y perfiles efímeros; no publica la tienda, no abre proveedores de pago y no envía correos.
+
+Comprobado en Chromium: seis productos a cero, filtros, etiquetas stock/sin stock, cantidades y límite demo, eliminar/vaciar, persistencia del carrito, formulario inválido, compra de los seis productos, IDs distintos, historial y avisos simulados, borrado, almacenamiento alterado/bloqueado, tratamiento seguro de textos, adaptadores de pago bloqueados, menú móvil, imágenes y anchos 320/390/768/1024/1440 px. Sin errores JavaScript/HTTP ni solicitudes a servicios externos en el flujo probado. No se han probado integraciones reales porque no existen ni están activas.
+
+## Datos que pedir a Aylin antes de una tienda real
+
+Identidad fiscal y comercial, marca y contacto; especificaciones y fotografías de los seis productos reales; variantes, tallas, materiales y advertencias de uso; precios e impuestos definitivos; inventario, proveedores y facturación; países de venta, transportistas, plazos y portes; devoluciones, desistimiento y atención de incidencias; cuenta PayPal Business, proveedor de Apple Pay y cuenta bancaria comercial; proveedor de correo y dominio emisor. También hosting/backend, base de datos, responsable de privacidad, textos legales y consentimiento cuando corresponda. Todo requiere una nueva implementación y revisión antes de permitir compras públicas.

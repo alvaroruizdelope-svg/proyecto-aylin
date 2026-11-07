@@ -1,394 +1,261 @@
 'use strict';
+(() => {
+  const catalog = window.AYLIN_CATALOG;
+  const products = catalog.products;
+  const byId = new Map(products.map(product => [product.id, product]));
+  const CART_KEY = 'aylin-shop-demo-cart-v1';
+  const ORDERS_KEY = 'aylin-shop-demo-orders-v1';
+  const money = value => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value / 100);
+  const $ = selector => document.querySelector(selector);
+  let toastTimer;
+  let activeCategory = 'todos';
+  let submitting = false;
+  let memoryOnly = false;
 
-// Cambia solo esta variable cuando dispongas del número definitivo (sin + ni espacios).
-const WHATSAPP_NUMBER = '34722892707';
-const GENERAL_MESSAGE = 'Hola, he visto la página web de Aylin Nails y me gustaría reservar una cita para hacerme las uñas';
-
-// Contenido editable. Las rutas son relativas a index.html.
-const SERVICES = [
-  { name: 'Uñas acrílicas', description: 'Forma, longitud y un acabado con personalidad. Una propuesta para expresar tu estilo.', price: 'Consultar precio' },
-  { name: 'Extensiones de uñas', description: 'Un extra de longitud para dar forma a ese look que tienes en mente.', price: 'Consultar precio' },
-  { name: 'Manicura semipermanente', description: 'Color y un acabado cuidado para acompañarte en tu día a día.', price: 'Consultar precio' },
-  { name: 'Diseños y decoración', description: 'Líneas delicadas, pequeños detalles o un toque de color. Tú pones la inspiración.', price: 'Consultar precio' },
-  { name: 'Relleno y mantenimiento', description: 'Una puesta a punto para renovar el acabado de tus uñas y seguir cuidándolas.', price: 'Consultar precio' },
-  { name: 'Pedicura', description: 'Un momento de cuidado para tus uñas de los pies, con el acabado que más te guste.', price: 'Consultar precio' }
-];
-// Precios de ejemplo en euros: no son tarifas oficiales. La técnica se propone como inspiración.
-const GALLERY = [
-  {
-    "image": "img/pexels-34997574.webp",
-    "title": "Manicura francesa",
-    "price": 25,
-    "category": "manicura",
-    "alt": "Mano con manicura francesa de puntas blancas y anillos dorados",
-    "width": 933,
-    "height": 1400,
-    "author": "Salim Da",
-    "source": "https://www.pexels.com/photo/elegant-hand-with-french-manicure-and-jewelry-34997574/"
-  },
-  {
-    "image": "img/pexels-34373400.webp",
-    "title": "Manicura efecto perlado",
-    "price": 28,
-    "category": "manicura",
-    "alt": "Uñas cortas de acabado perlado y suave brillo",
-    "width": 1050,
-    "height": 1400,
-    "author": "Moo  Lens",
-    "source": "https://www.pexels.com/photo/elegant-manicured-hand-with-gold-rings-34373400/"
-  },
-  {
-    "image": "img/pexels-1839711.webp",
-    "title": "Manicura corta lavanda",
-    "price": 20,
-    "category": "manicura",
-    "alt": "Uñas cortas pintadas en tono lavanda junto a un jersey",
-    "width": 933,
-    "height": 1400,
-    "author": "Kristina Paukshtite",
-    "source": "https://www.pexels.com/photo/purple-manicure-1839711/"
-  },
-  {
-    "image": "img/pexels-10944916.webp",
-    "title": "Manicura en violeta",
-    "price": 23,
-    "category": "manicura",
-    "alt": "Manos con uñas de color violeta y un anillo",
-    "width": 1200,
-    "height": 800,
-    "author": "MiM Fathi",
-    "source": "https://www.pexels.com/photo/a-close-up-shot-of-a-woman-wearing-a-gold-ring-10944916/"
-  },
-  {
-    "image": "img/pexels-17010955.webp",
-    "title": "Acrílicas rojas almendradas",
-    "price": 42,
-    "category": "acrilicas",
-    "alt": "Uñas largas almendradas de color rojo",
-    "width": 1120,
-    "height": 1400,
-    "author": "Andrea Mosti",
-    "source": "https://www.pexels.com/photo/fingers-decorated-with-red-acrylic-nails-17010955/"
-  },
-  {
-    "image": "img/pexels-15491630.webp",
-    "title": "Acrílicas con corazones",
-    "price": 48,
-    "category": "acrilicas",
-    "alt": "Uñas acrílicas con base nude y corazones rojos",
-    "width": 1050,
-    "height": 1400,
-    "author": "Linda Markaj",
-    "source": "https://www.pexels.com/photo/close-up-of-acrylic-nails-decorated-with-heart-shapes-15491630/"
-  },
-  {
-    "image": "img/pexels-28712961.webp",
-    "title": "Acrílicas con brillo",
-    "price": 55,
-    "category": "acrilicas",
-    "alt": "Uñas largas con detalles de purpurina y acabado rosa",
-    "width": 1120,
-    "height": 1400,
-    "author": "Sebastian Balog",
-    "source": "https://www.pexels.com/photo/elegant-nail-art-with-glitter-accent-on-hands-28712961/"
-  },
-  {
-    "image": "img/pexels-6135680.webp",
-    "title": "Extensiones acrílicas",
-    "price": 40,
-    "category": "acrilicas",
-    "alt": "Aplicación de una extensión acrílica durante una manicura",
-    "width": 1200,
-    "height": 800,
-    "author": "Gabriel Puyén",
-    "source": "https://www.pexels.com/photo/woman-getting-acrylic-nails-6135680/"
-  },
-  {
-    "image": "img/pexels-3557600.webp",
-    "title": "Decoración de lunares",
-    "price": 30,
-    "category": "disenos",
-    "alt": "Manicura clara con pequeños puntos sobre un jersey de punto",
-    "width": 933,
-    "height": 1400,
-    "author": "Kristina Paukshtite",
-    "source": "https://www.pexels.com/photo/photo-of-person-s-hand-3557600/"
-  },
-  {
-    "image": "img/pexels-4965824.webp",
-    "title": "Diseño geométrico",
-    "price": 35,
-    "category": "disenos",
-    "alt": "Uñas con decoración geométrica sobre fondo amarillo y negro",
-    "width": 1200,
-    "height": 800,
-    "author": "cottonbro studio",
-    "source": "https://www.pexels.com/photo/persons-hand-on-yellow-and-black-textile-4965824/"
-  },
-  {
-    "image": "img/pexels-10632142.webp",
-    "title": "Diseño dorado de fiesta",
-    "price": 38,
-    "category": "disenos",
-    "alt": "Manicura con purpurina dorada junto a estrellas decorativas",
-    "width": 1200,
-    "height": 900,
-    "author": "Pexels User",
-    "source": "https://www.pexels.com/photo/person-s-hands-with-gold-glitter-nails-10632142/"
-  },
-  {
-    "image": "img/pexels-17056222.webp",
-    "title": "Pedicura clásica",
-    "price": 25,
-    "category": "pedicura",
-    "alt": "Aplicación de esmalte en las uñas de los pies con guantes protectores",
-    "width": 933,
-    "height": 1400,
-    "author": "Andrea Mosti",
-    "source": "https://www.pexels.com/photo/close-up-of-woman-doing-pedicure-17056222/"
-  },
-  {
-    "image": "img/pexels-5484947.webp",
-    "title": "Pedicura con color",
-    "price": 30,
-    "category": "pedicura",
-    "alt": "Pedicura con esmalte naranja durante su aplicación",
-    "width": 1200,
-    "height": 800,
-    "author": "Felix Adams",
-    "source": "https://www.pexels.com/photo/person-getting-her-nails-done-5484947/"
-  },
-  {
-    "image": "img/pexels-4963822.webp",
-    "title": "Pedicura verde suave",
-    "price": 18,
-    "category": "pedicura",
-    "alt": "Uñas de los pies pintadas en un tono verde claro",
-    "width": 933,
-    "height": 1400,
-    "author": "https://kaboompics.com/",
-    "source": "https://www.pexels.com/photo/close-up-view-of-toes-on-carpet-4963822/"
+  function node(tag, text, className) {
+    const element = document.createElement(tag);
+    if (text !== undefined) element.textContent = text;
+    if (className) element.className = className;
+    return element;
   }
-];
-const NEWS = [
-  { title: 'La belleza de lo natural', date: '2026-10-12', label: 'INSPIRACIÓN · DEMO', image: 'img/pexels-3557600.webp', alt: 'Fotografía de manicura en tonos suaves con pequeños lunares', description: 'Tonos suaves, formas delicadas y ese acabado que combina con todo.', content: 'Los tonos nude y rosa empolvado son el punto de partida de este moodboard. Guarda tu referencia favorita y coméntala al consultar tu cita. Publicación ficticia de ejemplo; no muestra un servicio ya realizado.' },
-  { title: 'Pequeños detalles, mucho estilo', date: '2026-10-19', label: 'DISEÑOS · DEMO', image: 'img/pexels-15491630.webp', alt: 'Fotografía de uñas nude decoradas con corazones rojos', description: 'Una línea, un motivo, un color inesperado. Inspírate para tu próximo diseño.', content: 'Una decoración puede ser tan sutil o tan expresiva como quieras. Esta fotografía de inspiración explora pequeños motivos sobre una base suave. Las opciones reales y su disponibilidad se confirmarán con Aylin.' },
-  { title: 'Tu próximo momento de cuidado', date: '2026-10-26', label: 'AVISO · DEMO', image: 'img/pexels-4963822.webp', alt: 'Fotografía de pedicura con esmalte verde suave', description: 'Este será el espacio para compartir avisos, nuevos servicios y futuras promociones.', content: 'Ejemplo de publicación: aquí se podrán anunciar promociones con sus fechas, condiciones y precios confirmados. Actualmente no hay ninguna oferta activa ni una promoción comercial real.' }
-];
-
-function whatsappUrl(service) {
-  const message = service
-    ? `Hola, he visto la página web de Aylin Nails y me gustaría reservar una cita para ${service.toLocaleLowerCase('es')}`
-    : GENERAL_MESSAGE;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-function configureBookingLink(link, service) {
-  link.href = whatsappUrl(service);
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.setAttribute('aria-label', `${service ? `Reservar ${service}` : 'Reservar cita'} por WhatsApp (número de prueba, abre otra pestaña)`);
-}
-document.querySelectorAll('[data-reserva]').forEach(link => configureBookingLink(link));
-
-const nailIcon = '<svg viewBox="0 0 48 56" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M15 45V20c0-16 18-16 18 0v25c0 10-18 10-18 0Z"/><path d="M15 26c6 4 12 4 18 0M21 14c0-5 5-5 5-5M5 11h7M8.5 7.5v7M36 41h7M39.5 37.5v7"/></svg>';
-const servicesList = document.querySelector('#servicios-lista');
-SERVICES.forEach((service, index) => {
-  const card = document.createElement('article');
-  card.className = 'service-card reveal';
-  card.innerHTML = `<div class="service-top">${nailIcon}<span>0${index + 1}</span></div><h3></h3><p></p><div class="service-bottom"><span class="price"></span><a>Reservar ↗</a></div>`;
-  card.querySelector('h3').textContent = service.name;
-  card.querySelector('p').textContent = service.description;
-  card.querySelector('.price').textContent = service.price;
-  configureBookingLink(card.querySelector('a'), service.name);
-  servicesList.append(card);
-});
-
-let currentFilter = 'todas';
-let activeIndex = 0;
-let previousFocus;
-const lightbox = document.querySelector('#lightbox');
-const lightboxImage = document.querySelector('#lightbox-img');
-const galleryList = document.querySelector('#galeria-lista');
-const filteredGallery = () => GALLERY.filter(item => currentFilter === 'todas' || item.category === currentFilter);
-const euroPrice = value => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
-function showImage(index) {
-  const items = filteredGallery();
-  activeIndex = (index + items.length) % items.length;
-  const item = items[activeIndex];
-  lightboxImage.src = item.image;
-  lightboxImage.alt = item.alt;
-  document.querySelector('#lightbox-caption').textContent = item.title;
-  document.querySelector('#lightbox-price').textContent = `${euroPrice(item.price)} · precio orientativo provisional`;
-  document.querySelector('#lightbox-position').textContent = `${activeIndex + 1} / ${items.length}`;
-  const credit = document.querySelector('#lightbox-credit');
-  credit.textContent = `Foto: ${item.author} / Pexels`;
-  credit.href = item.source;
-  configureBookingLink(document.querySelector('#lightbox-booking'), item.title);
-}
-GALLERY.forEach(item => {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'gallery-item reveal';
-  button.dataset.category = item.category;
-  button.setAttribute('aria-label', `Ampliar ${item.title}, ${euroPrice(item.price)}, precio orientativo provisional, fotografía de inspiración`);
-  const img = document.createElement('img');
-  img.src = item.image;
-  img.alt = item.alt;
-  img.loading = 'lazy';
-  img.width = item.width;
-  img.height = item.height;
-  const caption = document.createElement('span');
-  caption.className = 'gallery-caption';
-  const title = document.createElement('span');
-  const name = document.createElement('span');
-  name.textContent = item.title;
-  const price = document.createElement('small');
-  price.textContent = `${euroPrice(item.price)} · orientativo`;
-  title.append(name, price);
-  const plus = document.createElement('span');
-  plus.textContent = '+';
-  plus.setAttribute('aria-hidden', 'true');
-  caption.append(title, plus);
-  button.append(img, caption);
-  button.addEventListener('click', () => {
-    previousFocus = button;
-    showImage(filteredGallery().indexOf(item));
-    lightbox.showModal();
-    document.body.classList.add('modal-open');
-  });
-  galleryList.append(button);
-});
-document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
-  currentFilter = button.dataset.filter;
-  document.querySelectorAll('[data-filter]').forEach(filter => {
-    const selected = filter === button;
-    filter.classList.toggle('active', selected);
-    filter.setAttribute('aria-pressed', String(selected));
-  });
-  galleryList.querySelectorAll('.gallery-item').forEach(item => {
-    item.hidden = currentFilter !== 'todas' && item.dataset.category !== currentFilter;
-  });
-  document.querySelector('#gallery-status').textContent = `${filteredGallery().length} fotografías en ${button.textContent}`;
-}));
-document.querySelector('#lightbox-close').addEventListener('click', () => lightbox.close());
-document.querySelector('#lightbox-prev').addEventListener('click', () => showImage(activeIndex - 1));
-document.querySelector('#lightbox-next').addEventListener('click', () => showImage(activeIndex + 1));
-lightbox.addEventListener('close', () => {
-  document.body.classList.remove('modal-open');
-  previousFocus?.focus();
-});
-lightbox.addEventListener('click', event => {
-  const rect = lightbox.getBoundingClientRect();
-  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) lightbox.close();
-});
-lightbox.addEventListener('keydown', event => {
-  if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-    event.preventDefault();
-    showImage(activeIndex + (event.key === 'ArrowRight' ? 1 : -1));
+  function storageWarning() {
+    memoryOnly = true;
+    $('#storage-warning').hidden = false;
+    $('#storage-warning').textContent = 'El navegador no permite guardar algunos datos. Puedes probar la compra, pero esos datos solo se conservarán mientras esta página permanezca abierta.';
   }
-});
-let touchStartX = 0;
-let touchStartY = 0;
-lightboxImage.addEventListener('touchstart', event => {
-  touchStartX = event.changedTouches[0].clientX;
-  touchStartY = event.changedTouches[0].clientY;
-}, { passive: true });
-lightboxImage.addEventListener('touchend', event => {
-  const dx = event.changedTouches[0].clientX - touchStartX;
-  const dy = event.changedTouches[0].clientY - touchStartY;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) showImage(activeIndex + (dx < 0 ? 1 : -1));
-}, { passive: true });
-
-NEWS.forEach(post => {
-  const article = document.createElement('article');
-  article.className = 'news-card reveal';
-  const image = document.createElement('img');
-  image.src = post.image;
-  image.alt = post.alt;
-  image.loading = 'lazy';
-  const photo = GALLERY.find(item => item.image === post.image);
-  image.width = photo?.width || 800;
-  image.height = photo?.height || 500;
-  const copy = document.createElement('div');
-  copy.className = 'news-copy';
-  const meta = document.createElement('div');
-  meta.className = 'news-meta';
-  const date = document.createElement('time');
-  date.dateTime = post.date;
-  date.textContent = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${post.date}T12:00:00Z`));
-  meta.append(`${post.label} · Fecha de ejemplo: `, date);
-  const title = document.createElement('h3');
-  title.textContent = post.title;
-  const description = document.createElement('p');
-  description.textContent = post.description;
-  copy.append(meta, title, description);
-  if (post.content) {
-    const details = document.createElement('details');
-    const summary = document.createElement('summary');
-    summary.textContent = 'Leer más';
-    summary.setAttribute('aria-label', `Leer más: ${post.title}`);
-    const content = document.createElement('p');
-    content.textContent = post.content;
-    details.append(summary, content);
-    details.addEventListener('toggle', () => { summary.textContent = details.open ? 'Leer menos' : 'Leer más'; });
-    copy.append(details);
+  function readStorage(type, key, fallback) {
+    try {
+      const raw = window[type].getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch { storageWarning(); return fallback; }
   }
-  if (photo) {
-    const credit = document.createElement('p');
-    credit.className = 'news-photo-credit';
-    const link = document.createElement('a');
-    link.href = photo.source;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = `Foto: ${photo.author} / Pexels`;
-    credit.append(link);
-    copy.append(credit);
+  function writeStorage(type, key, value) {
+    try { window[type].setItem(key, JSON.stringify(value)); }
+    catch { storageWarning(); }
   }
-  article.append(image, copy);
-  document.querySelector('#novedades-lista').append(article);
-});
-
-const menuButton = document.querySelector('.menu-toggle');
-const navigation = document.querySelector('#navegacion');
-function closeMenu(returnFocus = false) {
-  navigation.classList.remove('open');
-  menuButton.setAttribute('aria-expanded', 'false');
-  menuButton.setAttribute('aria-label', 'Abrir menú');
-  if (returnFocus) menuButton.focus();
-}
-menuButton.addEventListener('click', () => {
-  const open = menuButton.getAttribute('aria-expanded') !== 'true';
-  navigation.classList.toggle('open', open);
-  menuButton.setAttribute('aria-expanded', String(open));
-  menuButton.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-});
-navigation.querySelectorAll('a').forEach(link => link.addEventListener('click', () => closeMenu()));
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && navigation.classList.contains('open')) closeMenu(true); });
-document.addEventListener('click', event => { if (!event.target.closest('.header')) closeMenu(); });
-const mobileQuery = window.matchMedia('(max-width: 800px)');
-mobileQuery.addEventListener('change', () => closeMenu());
-document.querySelector('#year').textContent = new Date().getFullYear();
-if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.remove('pending');
-      observer.unobserve(entry.target);
+  function sanitizeCart(raw) {
+    const clean = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clean;
+    for (const product of products) {
+      const quantity = raw[product.id];
+      if (Number.isInteger(quantity) && quantity > 0 && product.stockQuantity > 0) {
+        clean[product.id] = Math.min(quantity, product.stockQuantity);
+      }
     }
-  }), { threshold: 0.08 });
-  document.querySelectorAll('.reveal').forEach(element => {
-    element.classList.add('pending');
-    observer.observe(element);
+    return clean;
+  }
+  let cart = sanitizeCart(readStorage('localStorage', CART_KEY, {}));
+  const customerFields = ['name', 'email', 'phone', 'address', 'postal', 'city', 'province'];
+  const loadedOrders = readStorage('sessionStorage', ORDERS_KEY, []);
+  // La sesión no es una fuente fiable: descarta datos manipulados o incompletos.
+  let orders = Array.isArray(loadedOrders) ? loadedOrders.filter(order => {
+    return order && order.demo === true && typeof order.id === 'string' && /^DEMO-[a-zA-Z0-9-]{8,100}$/.test(order.id)
+      && typeof order.date === 'string' && Number.isFinite(Date.parse(order.date))
+      && order.customer && customerFields.every(field => typeof order.customer[field] === 'string' && order.customer[field].length <= 180)
+      && Array.isArray(order.items) && order.items.length > 0 && order.items.length <= products.length
+      && order.items.every(item => item && byId.has(item.id) && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= byId.get(item.id).stockQuantity);
+  }).slice(0, 20).map(order => ({
+    id: order.id, date: order.date, demo: true, status: 'Confirmado · demo sin pago', totalMinor: 0,
+    customer: Object.fromEntries(customerFields.map(field => [field, order.customer[field]])),
+    items: order.items.map(item => ({ id: item.id, quantity: item.quantity }))
+  })) : [];
+  function lines() {
+    return products.filter(product => cart[product.id]).map(product => ({ product, quantity: cart[product.id] }));
+  }
+  function announce(text) {
+    clearTimeout(toastTimer);
+    $('#toast').textContent = text;
+    toastTimer = setTimeout(() => { $('#toast').textContent = ''; }, 4500);
+  }
+  function setCategory(category) {
+    activeCategory = category === 'todos' || catalog.categories[category] ? category : 'todos';
+    document.querySelectorAll('[data-filter]').forEach(button => {
+      const selected = button.dataset.filter === activeCategory;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    document.querySelectorAll('.product-card').forEach(card => {
+      card.hidden = activeCategory !== 'todos' && card.dataset.category !== activeCategory;
+    });
+    const count = products.filter(product => activeCategory === 'todos' || product.category === activeCategory).length;
+    $('#filter-status').textContent = `${count} productos: ${catalog.categories[activeCategory] || 'Todos los productos'}`;
+  }
+  function renderProducts() {
+    products.forEach(product => {
+      const card = node('article', undefined, 'product-card');
+      card.dataset.category = product.category;
+      card.dataset.productId = product.id;
+      const photo = node('div', undefined, 'product-photo');
+      const image = node('img');
+      image.src = product.image; image.alt = product.alt;
+      image.width = product.width; image.height = product.height; image.loading = 'lazy';
+      const available = product.stockQuantity > 0;
+      photo.append(image, node('span', available ? 'En stock · demo' : 'Sin stock · demo', 'stock'));
+      const heading = node('div', undefined, 'product-title-row');
+      heading.append(node('h3', product.name), node('span', money(product.priceMinor), 'product-price'));
+      const add = node('button', 'Añadir al carrito +', 'button');
+      add.type = 'button'; add.disabled = !available;
+      add.setAttribute('aria-label', `Añadir ${product.name} al carrito`);
+      add.addEventListener('click', () => {
+        if ((cart[product.id] || 0) >= product.stockQuantity) {
+          announce(`Has alcanzado el límite de ${product.stockQuantity} unidades de prueba.`); return;
+        }
+        cart[product.id] = (cart[product.id] || 0) + 1;
+        changedCart(); announce(`${product.name} añadido al carrito.`);
+      });
+      card.append(photo, node('p', catalog.categories[product.category], 'product-tag'), heading, node('p', product.description, 'product-description'), add);
+      $('#products').append(card);
+      const li = node('li'); const credit = node('a', `${product.name} — ${product.author} / Pexels`);
+      credit.href = product.source; credit.target = '_blank'; credit.rel = 'noopener noreferrer';
+      li.append(credit); $('#photo-credits').append(li);
+    });
+  }
+  function changedCart() {
+    cart = sanitizeCart(cart);
+    writeStorage('localStorage', CART_KEY, cart);
+    $('#checkout-error').textContent = '';
+    renderCart();
+  }
+  function quantityButton(product, change, text) {
+    const button = node('button', text);
+    button.type = 'button'; button.dataset.quantityFor = product.id; button.dataset.change = change;
+    button.setAttribute('aria-label', `${change > 0 ? 'Aumentar' : 'Reducir'} cantidad de ${product.name}`);
+    button.disabled = change > 0 && cart[product.id] >= product.stockQuantity;
+    button.addEventListener('click', () => {
+      const next = (cart[product.id] || 0) + change;
+      if (next <= 0) delete cart[product.id]; else cart[product.id] = Math.min(next, product.stockQuantity);
+      changedCart();
+      const replacement = document.querySelector(`[data-quantity-for="${product.id}"][data-change="${change}"]`);
+      if (replacement && !replacement.disabled) replacement.focus();
+      else if (next > 0) document.querySelector(`[data-quantity-for="${product.id}"][data-change="-1"]`)?.focus();
+      else $('#cart-clear').hidden ? $('#cart-total').focus() : $('#cart-clear').focus();
+      announce(next <= 0 ? `${product.name} eliminado.` : `${product.name}: ${cart[product.id]} unidades.`);
+    });
+    return button;
+  }
+  function renderCart() {
+    const items = lines();
+    const count = items.reduce((sum, item) => sum + item.quantity, 0);
+    $('#cart-count').textContent = count;
+    $('#cart-count').setAttribute('aria-label', `${count} unidades en el carrito`);
+    const list = $('#cart-items'); list.replaceChildren();
+    if (!items.length) {
+      list.append(node('p', 'Tu próxima selección empieza aquí.', 'empty-cart'), node('p', 'Añade alguno de los seis productos para probar la compra.', 'empty-note'));
+    }
+    for (const { product, quantity } of items) {
+      const row = node('article', undefined, 'cart-line'); row.dataset.cartId = product.id;
+      const image = node('img'); image.src = product.image; image.alt = ''; image.width = 70; image.height = 85;
+      const info = node('div'); info.append(node('h3', product.name), node('span', `${money(product.priceMinor)} / unidad`, 'line-price'));
+      const counter = node('div', undefined, 'quantity');
+      const output = node('output', quantity); output.setAttribute('aria-label', `Cantidad de ${product.name}`);
+      counter.append(quantityButton(product, -1, '−'), output, quantityButton(product, 1, '+')); info.append(counter);
+      const remove = node('button', 'Eliminar', 'remove-button'); remove.type = 'button';
+      remove.setAttribute('aria-label', `Eliminar ${product.name} del carrito`);
+      remove.addEventListener('click', () => {
+        delete cart[product.id]; changedCart(); $('#cart-total').focus(); announce(`${product.name} eliminado del carrito.`);
+      });
+      row.append(image, info, remove); list.append(row);
+    }
+    $('#cart-total').textContent = money(0); $('#cart-total').tabIndex = -1;
+    $('#checkout-start').disabled = !items.length;
+    $('#cart-clear').hidden = !items.length;
+    $('#submit-order').disabled = !items.length;
+    if (!items.length) $('#checkout').hidden = true;
+    $('#checkout-summary').replaceChildren();
+    for (const { product, quantity } of items) {
+      const row = node('div', undefined, 'summary-line'); row.append(node('span', `${product.name} × ${quantity}`), node('span', money(0))); $('#checkout-summary').append(row);
+    }
+    $('#checkout-summary').append(node('p', 'Envío de prueba: 0,00 €', 'fine-print'));
+  }
+  function itemList(order) {
+    const list = node('ul');
+    order.items.forEach(item => list.append(node('li', `${byId.get(item.id).name} × ${item.quantity} — ${money(0)}`)));
+    return list;
+  }
+  function shippingText(customer) {
+    return `${customer.name}\n${customer.address}\n${customer.postal} · ${customer.city}, ${customer.province}\n${customer.email}\n${customer.phone}`;
+  }
+  function simulatedNotice(order, target) {
+    const box = node('div', undefined, 'sim-notification');
+    box.append(node('strong', `${target === 'merchant' ? 'Aviso para Aylin' : 'Confirmación para el comprador'} · SIMULADO, NO ENVIADO`));
+    box.append(node('p', target === 'merchant' ? 'Destino comercial: pendiente de configurar.' : `Destino de ejemplo: ${order.customer.email}`));
+    box.append(node('p', `Pedido ${order.id}`, 'order-id'), itemList(order), node('p', `Total: ${money(0)} · Estado: ${order.status}`), node('p', 'Datos ficticios de envío:'), node('address', shippingText(order.customer)));
+    return box;
+  }
+  function renderOrders() {
+    const target = $('#orders'); target.replaceChildren();
+    $('#clear-history').hidden = !orders.length;
+    if (!orders.length) target.append(node('p', 'Todavía no hay pedidos de prueba en esta pestaña.', 'empty-note'));
+    for (const order of orders) {
+      const record = node('details', undefined, 'order-record');
+      const summary = node('summary');
+      const date = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(order.date));
+      summary.append(node('span', 'Pedido gratuito de prueba'), node('small', `${date} · ${money(0)} · Ver detalle`));
+      const content = node('div', undefined, 'order-content');
+      content.append(node('p', order.id, 'order-id'), node('p', `Estado: ${order.status}`, 'fine-print'), itemList(order), node('p', `Total de demostración: ${money(0)}`), node('h3', 'Datos ficticios del pedido'), node('address', shippingText(order.customer)), node('h3', 'Notificaciones simuladas'), node('p', 'No se han enviado correos. Estos son los avisos que se prepararían para una integración futura.', 'fine-print'), simulatedNotice(order, 'merchant'), simulatedNotice(order, 'buyer'));
+      record.append(summary, content); target.append(record);
+    }
+  }
+  $('#checkout-start').addEventListener('click', () => {
+    if (!lines().length) return;
+    $('#confirmation').hidden = true; $('#checkout').hidden = false;
+    $('#checkout-title').focus(); $('#checkout').scrollIntoView({ block: 'start' });
   });
-}
-
-// Créditos visibles y enlaces a las páginas originales, sin dependencias externas de carga.
-GALLERY.forEach(item => {
-  const row = document.createElement('li');
-  const link = document.createElement('a');
-  link.href = item.source;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.textContent = `${item.title} — ${item.author} / Pexels`;
-  row.append(link);
-  document.querySelector('#photo-credit-list').append(row);
-});
+  $('#cart-clear').addEventListener('click', () => { cart = {}; changedCart(); $('#cart-total').focus(); announce('Carrito vaciado.'); });
+  $('#fill-demo').addEventListener('click', () => {
+    const sample = { name: 'Alex Demo', email: 'ejemplo@example.com', phone: '600000000', address: 'Calle de Ejemplo, 1', postal: '28001', city: 'Ciudad de ejemplo', province: 'Provincia de ejemplo' };
+    for (const [key, value] of Object.entries(sample)) $('#checkout-form').elements.namedItem(key).value = value;
+    announce('Datos ficticios rellenados. Revisa la confirmación de demostración antes de continuar.');
+  });
+  $('#checkout-form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (submitting || !event.currentTarget.reportValidity()) return;
+    const selected = lines();
+    if (!selected.length) { $('#checkout-error').textContent = 'El carrito está vacío. Añade un producto antes de continuar.'; return; }
+    if (selected.some(({ product, quantity }) => product.priceMinor !== 0 || product.stockQuantity < quantity) || window.AYLIN_PAYMENTS.mode !== 'demo') {
+      $('#checkout-error').textContent = 'Solo se permiten productos gratuitos y disponibles en esta demostración.'; return;
+    }
+    const data = new FormData(event.currentTarget);
+    const customer = Object.fromEntries(customerFields.map(field => [field, String(data.get(field) || '').trim()]));
+    if (Object.values(customer).some(value => !value) || customer.name.length < 3 || customer.address.length < 5 || customer.city.length < 2 || customer.province.length < 2) {
+      $('#checkout-error').textContent = 'Completa todos los campos con datos ficticios válidos, sin dejar solo espacios.'; return;
+    }
+    if (data.get('demoConsent') !== 'on' || data.get('payment') !== 'demo') {
+      $('#checkout-error').textContent = 'Confirma que utilizas datos ficticios y el pedido gratuito de demostración.'; return;
+    }
+    submitting = true; $('#submit-order').disabled = true;
+    const unique = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    const order = { id: `DEMO-${unique}`, date: new Date().toISOString(), demo: true, status: 'Confirmado · demo sin pago', totalMinor: 0, customer, items: selected.map(({ product, quantity }) => ({ id: product.id, quantity })) };
+    orders = [order, ...orders].slice(0, 20);
+    writeStorage('sessionStorage', ORDERS_KEY, orders); renderOrders();
+    cart = {}; changedCart();
+    event.currentTarget.reset();
+    $('#confirmation-message').textContent = `Pedido ${order.id} · Total: ${money(0)}. ${memoryOnly ? 'Guardado temporalmente en memoria.' : 'Guardado en el historial de esta pestaña.'}`;
+    $('#confirmation').hidden = false; $('#confirmation-title').focus(); $('#confirmation').scrollIntoView({ block: 'start' });
+    announce('Pedido de demostración creado. No hay cobros ni correos enviados.');
+    submitting = false;
+  });
+  $('#clear-history').addEventListener('click', () => {
+    orders = [];
+    try { sessionStorage.removeItem(ORDERS_KEY); } catch { storageWarning(); }
+    renderOrders(); $('#confirmation').hidden = true; $('#confirmation-message').textContent = '';
+    $('#pedidos').scrollIntoView({ block: 'start' }); announce('Historial y avisos simulados borrados de esta pestaña.');
+  });
+  document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => setCategory(button.dataset.filter)));
+  document.querySelectorAll('[data-category]').forEach(link => link.addEventListener('click', () => setCategory(link.dataset.category)));
+  const menu = $('#navigation'); const menuToggle = $('#menu-toggle');
+  function closeMenu(focus = false) {
+    menu.classList.remove('open'); menuToggle.setAttribute('aria-expanded', 'false'); menuToggle.setAttribute('aria-label', 'Abrir menú'); menuToggle.textContent = '☰';
+    if (focus) menuToggle.focus();
+  }
+  menuToggle.addEventListener('click', () => {
+    const open = menuToggle.getAttribute('aria-expanded') !== 'true'; menu.classList.toggle('open', open);
+    menuToggle.setAttribute('aria-expanded', String(open)); menuToggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú'); menuToggle.textContent = open ? '×' : '☰';
+  });
+  menu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => closeMenu()));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && menu.classList.contains('open')) closeMenu(true); });
+  document.addEventListener('click', event => { if (!event.target.closest('.header')) closeMenu(); });
+  window.matchMedia('(max-width: 800px)').addEventListener('change', () => closeMenu());
+  $('#year').textContent = new Date().getFullYear();
+  renderProducts(); renderCart(); renderOrders();
+})();
