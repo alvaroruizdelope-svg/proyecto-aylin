@@ -1,22 +1,27 @@
-# AYLIN SHOP · Tienda de demostración
+# AYLIN SHOP · Demostración
 
-Transformación del proyecto existente `proyecto-aylin` en una tienda provisional de ropa deportiva y accesorios para mascotas, desarrollada con HTML, CSS y JavaScript.
+Seis productos de ropa deportiva y mascotas, todos a **0,00 €**. Sin cobros ni envíos reales. No publicada en ningún alojamiento.
 
-**Solo DEMO: seis productos, todos a 0,00 €. No hay cobros, pedidos comerciales, correos ni envíos reales.**
-
-Incluye catálogo y filtros, carrito con cantidades, checkout gratuito con datos ficticios, identificadores de pedido, historial local y avisos simulados para comercio y comprador. PayPal, Apple Pay y transferencia están desactivados, con un contrato de ampliación y requisitos de servidor documentados.
+- Fichas de producto accesibles desde foto o nombre, con talla y cantidad.
+- XS/S/M/L para ropa y arnés; talla única para correa y juguete; variantes independientes en carrito y resumen.
+- Solo confirmación del pedido actual, sin historial público ni datos de envío en la confirmación. No se guardan pedidos en el navegador.
+- Opiniones por producto, sin reseñas inventadas: el servidor mantiene las nuevas pendientes de moderación y comprueba las compras demo por sesión.
+- Integración de correo real con Resend desde servidor, desactivada hasta configurar credenciales y buzones autorizados. **No se ha enviado ningún correo real en las pruebas.**
+- No existe panel web administrativo inseguro: su autenticación y autorización real quedan documentadas como pendientes. Los pagos permanecen sin cambios y desactivados.
 
 ## Abrir
 
-Abre la carpeta en VS Code y utiliza **Open with Live Server** sobre `index.html`. No requiere npm ni instalación de dependencias para usar la web. Los recursos se cargan localmente.
+Modo estático: abre `index.html` con Live Server de VS Code (carrito y checkout locales; no guarda opiniones ni envía correo).
 
-- [Guía de uso, edición y pruebas](GUIA.md)
-- [Integraciones futuras y requisitos de correo/pago](INTEGRACIONES.md)
-- [Créditos y licencias de las seis fotografías](img/SHOP-FOTOGRAFIAS.md)
+Modo de servidor de pruebas, Python 3.10+: `python3 server/app.py --port 8000` (Windows: `py server/app.py --port 8000`), luego abre `http://127.0.0.1:8000`. Solo escucha en loopback; no usar como alojamiento público.
 
-Prueba automatizada (requiere Python, Playwright y Chromium): `python3 tests/smoke.py`.
+- [Guía de uso, tallas, privacidad y moderación](GUIA.md)
+- [Configurar correo, límites y administración futura](INTEGRACIONES.md)
+- [Licencias de fotografías](img/SHOP-FOTOGRAFIAS.md)
 
-La tienda no se ha desplegado ni publicado en ningún alojamiento. Los recursos de la antigua demo se conservan sin uso. Antes de permitir ventas reales se necesita una implementación de servidor y configuración comercial, de seguridad y legal.
+Pruebas: `python3 -m unittest discover -s tests -p test_server.py -v` y `python3 tests/smoke.py` (la segunda requiere Playwright y Chromium). Todas usan datos ficticios y correo simulado/desactivado, sin cobros.
+
+Se conservan la descripción y recursos antiguos sin uso. No se incluyen bases de datos, pedidos ni credenciales en el repositorio.
 
 ## Descripción original conservada
 

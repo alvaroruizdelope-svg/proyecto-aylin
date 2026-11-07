@@ -1,34 +1,72 @@
-# AYLIN SHOP · Integraciones futuras
+# AYLIN SHOP · Servidor local, correo real y administración futura
 
-## Estado actual: solo demo
+## Estado y alcance
 
-No existe backend, base de datos, envío de correo ni pagos activos. Los seis precios son cero, el checkout solo crea un objeto de pedido local y los avisos se representan en pantalla. No hay claves privadas, SDK de pago ni credenciales de producción en el proyecto. Se verificaron los nombres de variables y configuración disponibles: no hay servicios ni credenciales de correo configurados. No se han enviado mensajes de prueba.
+Servidor Python local de pruebas, SQLite fuera del checkout y sin dependencias externas. No desplegado ni apto para producción. Pagos PayPal, Apple Pay y transferencia **sin modificar y desactivados**. Todos los precios e importes siguen en cero.
 
-`js/integraciones.js` declara proveedores futuros con `enabled: false`, `mode: 'demo'` y un método `createPaymentSession` que siempre rechaza la operación. No basta con cambiar una bandera: es necesario implementar los servicios oficiales. El bloqueo permanece aunque se intente invocar el adaptador desde JavaScript.
+Sí se implementó el cliente HTTPS oficial de Resend desde el servidor, con dos correos, lista de destinatarios de prueba, idempotencia y validación. No se ha enviado correo real: faltan credenciales/configuración. Las pruebas del proveedor usan dobles simulados y se identifican como tales.
 
-## Contrato propuesto para un backend futuro (no implementado)
+## Qué debes configurar para enviar correos reales de prueba
 
-- `POST /api/orders`: recibe identificadores, variantes, cantidades, dirección y correo. El servidor valida campos, stock, impuestos, transporte y precios de su propia base de datos; ignora cualquier total enviado por el navegador. Responde con un pedido persistido y su estado real. Incluye idempotencia, control de abuso y protección CSRF si usa sesiones con cookies.
-- `POST /api/orders/:id/payment-session`: el servidor autoriza el acceso al pedido, valida el método y crea una sesión oficial de pago. El cliente solo recibe el token/URL público necesario.
-- Webhooks oficiales: validan firma, identidad del evento, moneda, importe y pedido; son idempotentes y registran estados como pendiente, autorizado, pagado o cancelado. Nunca marcar un pedido como pagado por un retorno del navegador.
-- Cola de notificaciones: un evento persistido de pedido genera los correos del comprador y comercio; registrar reintentos, estados enviados/fallidos y evitar duplicados. El evento incluye número, productos y cantidades, total, datos de envío y estado. Los avisos actuales sirven como esquema visual, no como código de entrega de correo.
-- Administración real: autenticación, permisos, control de acceso, auditoría, copias de seguridad y consulta protegida. El historial de esta demo carece de esas funciones deliberadamente y solo es local.
-- Separar explícitamente pruebas y producción, secretos en servidor, HTTPS, política de privacidad, retención/borrado y monitorización sin exponer datos personales.
+1. Crea una cuenta en Resend. En **Domains**, añade un dominio o subdominio que controles, por ejemplo uno exclusivo de pruebas. Añade en tu proveedor DNS los registros exactos que solicite Resend y espera a que el dominio esté verificado. Consulta https://resend.com/docs/dashboard/domains/introduction . No se ha cambiado ningún DNS desde este proyecto.
+2. Crea una clave API con permisos de envío y el alcance mínimo disponible para ese dominio. No la pegues en chat, archivos públicos ni GitHub.
+3. Elige un remitente autorizado de ese dominio, un buzón vendedor de prueba y uno o varios buzones compradores que te pertenezcan o cuyos titulares hayan autorizado esta prueba. Los buzones pueden coincidir si el proveedor lo admite; revisa sus restricciones. Si usas un remitente de prueba proporcionado por Resend, respeta sus límites de destinatarios. El formulario debe usar un correo de la lista autorizada; deja ficticios nombre, teléfono y dirección.
+4. Configura estas variables **privadas del proceso del servidor** mediante tu gestor seguro o terminal local. El navegador nunca las recibe. La aplicación no carga automáticamente un archivo `.env`.
 
-## PayPal
+| Variable | Uso |
+| --- | --- |
+| `RESEND_API_KEY` | Clave secreta de envío de Resend |
+| `SHOP_MAIL_ENABLED` | `true` para solicitar envío; ausente/cualquier otro valor desactiva correo |
+| `SHOP_MAIL_FROM` | Remitente autorizado; por ejemplo `Aylin Shop <pedidos@tu-dominio-verificado>` |
+| `SHOP_SELLER_EMAIL` | Destinatario privado del vendedor |
+| `SHOP_TEST_BUYER_EMAILS` | Lista de correos de compradores de prueba permitidos, separados por comas |
+| `SHOP_PRIVATE_DIR` | Opcional: ruta privada de SQLite, fuera del proyecto y de toda raíz pública |
 
-Cuenta PayPal Business, aplicación oficial y credenciales **sandbox** para desarrollo. Crear y capturar órdenes desde el servidor según el flujo oficial; validar eventos y cantidades antes de registrar pago. Solo el identificador público necesario puede estar en el cliente. Nunca un secreto en JavaScript o GitHub. Acordar en una fase posterior el paso autorizado a producción.
+Ejemplo para Windows 11, en PowerShell, **reemplazando los marcadores** por tus datos. No copies una clave en un archivo:
 
-## Apple Pay
+```powershell
+$secreto = Read-Host "Clave Resend (no se muestra)" -AsSecureString
+$env:RESEND_API_KEY = [System.Net.NetworkCredential]::new('', $secreto).Password
+$env:SHOP_MAIL_ENABLED = 'true'
+$env:SHOP_MAIL_FROM = 'Aylin Shop <pedidos@TU-DOMINIO-VERIFICADO>'
+$env:SHOP_SELLER_EMAIL = 'TU-BUZON-VENDEDOR'
+$env:SHOP_TEST_BUYER_EMAILS = 'TU-BUZON-COMPRADOR'
+$env:SHOP_PRIVATE_DIR = "$env:LOCALAPPDATA\AylinShop\private"
+py server/app.py --port 8000
+```
 
-Proveedor compatible (por ejemplo Stripe), cuenta del comercio y claves de prueba; dominio verificado, HTTPS y habilitación oficial del método. La disponibilidad depende de región, cuenta, dispositivo y navegador compatibles. Validar la confirmación en el servidor/webhook del proveedor. Este borrador no muestra botones oficiales habilitados ni simula la aceptación de Apple Pay.
+La clave queda en el entorno del proceso, no en JavaScript ni Git. Limita quién puede usar ese equipo; comprueba las ACL de la carpeta privada en Windows. Tras terminar, cierra el servidor y esa terminal o elimina las variables privadas de la sesión. No subas la carpeta privada. `.gitignore` excluye entornos y bases locales como defensa adicional; la aplicación rechaza un directorio privado dentro del checkout.
 
-## Transferencia bancaria
+5. Abre **http://127.0.0.1:8000**, no Live Server. Añade los seis productos con sus tallas y cantidades, pulsa continuar y utiliza datos ficticios de envío con un correo comprador autorizado. Confirma el pedido demo gratuito.
+6. El servidor llama a `https://api.resend.com/emails` con claves de idempotencia diferentes por destinatario. Solo marca **accepted** cuando obtiene respuesta de éxito con ID de proveedor. Comprueba ambos mensajes en el panel de Resend y luego en los buzones, incluido spam. La confirmación web distingue aceptación de entrega; no hay webhook de entregas implementado.
+7. Para apagar los envíos, elimina `SHOP_MAIL_ENABLED` o establece un valor distinto de `true` y reinicia el servidor.
 
-Datos de la cuenta comercial confirmados, referencia única por pedido, instrucciones y proceso de conciliación. El pedido quedaría **pendiente de transferencia**, nunca pagado por pulsar un botón. Verificar recepción real antes de confirmar. La demo no muestra IBAN ni pide datos bancarios.
+Si la configuración está incompleta, no se hace ninguna petición al proveedor. Si el comprador no está en la lista permitida, no se envía ninguno de los dos mensajes. Un error, timeout o respuesta sin ID queda como no confirmado, no como éxito. Un timeout puede significar que el proveedor recibió la solicitud; no se afirma que se haya enviado ni se reintenta automáticamente. La clave de idempotencia evita duplicar pedidos/correos al repetir la misma solicitud. Si un proceso se interrumpe después de registrar un pedido, el estado puede quedar pendiente; se necesita una cola durable y reconciliación antes de producción.
 
-## Correos reales de prueba
+Los IDs de proveedor y contenido del pedido se conservan únicamente en SQLite privado. La API del checkout devuelve datos no personales y estados de correo; nunca direcciones ni claves. Los correos y el panel del proveedor tienen su propia retención y no se borran al limpiar SQLite.
 
-Primero implementar el backend y elegir un servicio de pruebas, por ejemplo un buzón SMTP de sandbox o una cuenta de desarrollo de un proveedor transaccional. Harán falta host/puerto y credenciales SMTP, o una clave API del proveedor, dirección remitente autorizada, buzón del comercio y destinatarios de prueba permitidos. Para entrega externa pueden hacer falta dominio verificado, SPF/DKIM y configuración DMARC. Introducir credenciales solo por el gestor seguro del entorno/backend, nunca en chat, código cliente ni repositorio. No se requieren ni se solicitan valores para esta demo.
+Documentación oficial utilizada: https://resend.com/docs/api-reference/emails/send-email y https://resend.com/docs/dashboard/emails/idempotency-keys .
 
-La comprobación posterior debe diferenciar solicitud aceptada por el servicio, entrega y recepción en el buzón. No declarar un correo enviado basándose en los avisos locales de esta tienda.
+## Protección implementada y límites
+
+- Solo loopback, comprobación de Host/Origin, cookie aleatoria HttpOnly/SameSite=Strict, token CSRF, consultas SQL parametrizadas, límites de cuerpo, sesión y frecuencia. CSP sin scripts de terceros ni `unsafe-eval`, no CORS abierto ni directorios estáticos listables.
+- Validación de productos, tallas, disponibilidad demo, cantidades y datos en servidor; el catálogo servidor es la fuente de precios cero. Idempotencia por sesión y solicitud.
+- Ningún GET de listados o detalles de pedidos. La respuesta del POST corresponde solo a la solicitud del comprador. No se conserva historial en el navegador y la confirmación actual desaparece al recargar.
+- Base fuera del checkout, permisos de usuario en Unix, sin volcado de cuerpos/cookies/credenciales en logs. No es cifrado completo de disco: utiliza un equipo privado y cifrado del sistema si procede. Retención y limpieza descritas en GUIA.md.
+- El HTTP local no usa cookies Secure; para una futura publicación serían imprescindibles HTTPS, cookies Secure, infraestructura y sesiones apropiadas. No basta con exponer este servidor mediante un proxy.
+
+## Administración privada pendiente
+
+No hay panel web, contraseña en cliente ni endpoints de pedidos que se protejan simplemente ocultándolos. `/admin` y `/api/admin/...` responden denegando acceso, sin entregar datos. La moderación CLI local usa los permisos del sistema operativo; no es una autenticación de administrador web.
+
+Un panel real requiere proveedor de identidad o autenticación robusta, contraseñas con hash adecuado si las administra la aplicación, MFA recomendado, sesiones de servidor con expiración/revocación, protección CSRF, rol de administración y autorización comprobada **en cada endpoint**. También auditoría, paginación de pedidos, acceso mínimo a PII, copias protegidas, política de retención y borrado, gestión de incidencias y revisión de seguridad. No se ha implementado ni publicado ese panel para no aparentar una seguridad inexistente.
+
+## Opiniones, verificación y moderación
+
+API pública de lectura: solo opiniones aprobadas por producto, sin nombre, correo, sesión ni pedido. Envío con CSRF: las nuevas opiniones quedan pendientes, con longitud/estrellas validadas y limitación de frecuencia. El servidor determina si esa sesión tiene un pedido demo de ese producto. No acepta marcas de verificación, correos ni números de pedido del cliente. La etiqueta pública dice específicamente **compra de demostración**.
+
+El operador local revisa mediante `server/moderate.py`. No rechazar críticas legítimas por baja puntuación: solo contenido abusivo, spam, datos personales o incumplimiento concreto. Las decisiones tienen motivo y fecha y no cambian la valoración ni el texto. Antes de publicar una tienda real: cuentas o enlaces de un solo uso emitidos por servidor, acreditación de titularidad de pedido, reglas de moderación transparentes, denuncia/apelación, medidas antiautomatización y equipo de revisión. No se insertan opiniones de muestra.
+
+## Pagos futuros (sin cambios en esta entrega)
+
+PayPal necesita aplicación/cuenta Business y flujo oficial desde servidor. Apple Pay requiere proveedor compatible, dominio verificado, HTTPS y dispositivo/navegador elegibles. Transferencia requiere cuenta comercial y conciliación real, sin dar por pagado un pedido al pulsar un botón. En todos los casos: importes calculados en servidor y validación de webhooks firmados/idempotentes antes de marcar pagos. Esta demo no hace ninguna de esas operaciones ni pide datos bancarios.

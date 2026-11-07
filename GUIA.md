@@ -1,56 +1,82 @@
-# AYLIN SHOP · Guía de la demostración
+# AYLIN SHOP · Fichas, variantes, privacidad y opiniones
 
-Tienda estática en HTML, CSS y JavaScript. Exactamente seis productos provisionales, todos a **0,00 €**: leggings deportivos, top deportivo, camiseta deportiva, correa para perro, arnés ajustable y juguete para mascotas. No hay ventas, pagos, correos ni envíos reales. Sin frameworks, dependencias de ejecución, rastreadores ni SDK de pagos.
+Seis productos y todos los importes a **0,00 €**. Diseño conservado. No hay pagos, ventas ni envíos reales. `js/integraciones.js` (PayPal, Apple Pay y transferencia) permanece sin cambios y desactivado.
 
-## Abrir en tu ordenador
+## Dos maneras de usar la demo
 
-Descarga y extrae el ZIP de GitHub. Abre la carpeta extraída en VS Code, pulsa con el botón derecho en `index.html` y selecciona **Open with Live Server**. También puedes abrir `index.html` directamente en Chrome, aunque las reglas de almacenamiento con archivos locales dependen del navegador. Todos los recursos visuales cargan desde `img/`; no requieren acceso a Pexels. Los enlaces de atribución sí necesitan internet si decides abrirlos.
+### Vista estática (Live Server o abrir index.html)
 
-## Probar el flujo completo
+Funciona el catálogo, las fichas, los filtros, tallas, cantidades, carrito y checkout gratuito. Solo se muestra la confirmación del pedido que se acaba de realizar, en memoria y sin datos de envío. No se guarda ni envía el pedido, no hay correos ni publicación de opiniones. La interfaz de opiniones indica que no ha enviado/guardado el comentario. La confirmación desaparece al recargar, cerrarla o comenzar otro checkout.
 
-1. Abre el catálogo y prueba los filtros Todos, Ropa deportiva y Mascotas.
-2. Añade los seis productos. Cada precio, subtotal, envío demo y total es 0,00 €.
-3. En Carrito cambia cantidades, elimina un producto y vuelve a añadirlo. El inventario demo permite hasta 20 unidades por producto; no representa existencias reales.
-4. Pulsa **Continuar al pedido demo**. El resumen debe mostrar los seis productos.
-5. Pulsa **Rellenar con datos ficticios de ejemplo**. Puedes editar estos datos, pero no introduzcas datos personales reales. Marca la confirmación de demostración.
-6. Pulsa **Confirmar pedido demo**. Se genera un identificador `DEMO-…`, se vacía el carrito y aparece una confirmación sin cobro.
-7. En **Pedidos de demostración** abre el detalle. Muestra productos, cantidades, total, datos ficticios y dos avisos etiquetados como SIMULADO, NO ENVIADO (comercio y comprador).
-8. Recarga para comprobar el historial de la pestaña. Puedes borrarlo con su botón. No es un panel administrativo: solo muestra los pedidos de prueba de esa pestaña.
+### Servidor de pruebas local (necesario para opiniones y correo)
 
-## Persistencia y límites
-
-- Carrito: `localStorage`, clave `aylin-shop-demo-cart-v1`; solo identificadores de producto y cantidades. Se conserva al recargar. Se vacía con su botón.
-- Historial y datos ficticios: `sessionStorage`, clave `aylin-shop-demo-orders-v1`; hasta 20 pedidos, últimos primero. Normalmente desaparece al cerrar la pestaña; la restauración de sesiones del navegador puede conservarlo. Utiliza **Borrar historial de esta pestaña** para eliminarlo explícitamente.
-- Si el almacenamiento está bloqueado, hay una alternativa en memoria y se muestra un aviso. Los datos no se conservan al recargar en ese caso.
-- No se transmiten formularios ni se realizan peticiones a APIs. Los avisos son representación local, no una bandeja de correo ni una cola real de notificaciones.
-- Validación local adecuada para probar la demo; no protege un comercio real. Los datos de un navegador siempre pueden manipularse. No sirve como inventario, contabilidad ni registro comercial.
-
-## Archivos y edición
-
-- `index.html`: portada, secciones, formulario, contacto y apartados legales provisionales.
-- `css/estilos.css`: variables de color y tipografía al principio. Paleta blanco cálido, grafito, oliva y arena.
-- `js/catalogo.js`: seis productos y categorías. `priceMinor` está expresado en céntimos y debe permanecer en **0** en la demo. `stockQuantity` es inventario simulado (20 inicialmente); al establecerlo en 0 aparecen «Sin stock · demo» y el botón desactivado. El carrito elimina productos sin stock al recargar. No se reduce inventario tras los pedidos porque es una demo local sin gestión de existencias compartida.
-- `js/script.js`: catálogo, filtros, carrito, validación, pedidos y avisos simulados. Los textos introducidos se muestran con `textContent`, nunca como HTML.
-- `js/integraciones.js`: contrato de ampliación para pagos; proveedores desactivados. Solicitar una sesión de pago produce un error explicativo y no inicia ninguna comunicación.
-- `img/shop-*.webp`, `img/shop-icon.svg`: imágenes activas de la tienda. Las seis fotos son referencias de Pexels, no fotografías de mercancía confirmada. Licencias y autores en `img/SHOP-FOTOGRAFIAS.md` y en la sección de créditos de la página.
-- `INTEGRACIONES.md`: requisitos para pagos, backend y correo futuros.
-- `tests/smoke.py`: prueba automatizada integral.
-- Se conserva el README y los recursos anteriores sin uso para preservar el trabajo previo. La interfaz de tienda no carga imágenes, scripts ni estilos de manicura.
-
-Para ampliar el catálogo: añade objetos en `products` de `js/catalogo.js`, con ID único y `priceMinor: 0`. Para categorías nuevas, añade su etiqueta al mapa `categories` y un botón con `data-filter` en HTML (y opcionalmente un enlace `data-category`). Sustituye las fotos por imágenes del producto real con permiso de uso, actualizando `image`, `alt`, `width`, `height`, `author` y `source`.
-
-## Comprobación automatizada
-
-En un entorno de desarrollo con Python, Playwright y Chromium instalados:
+Requiere Python 3.10 o superior. No requiere paquetes de ejecución externos. Desde la carpeta del proyecto:
 
 ```sh
+python3 server/app.py --port 8000
+```
+
+En Windows normalmente puedes usar `py server/app.py --port 8000`. Abre `http://127.0.0.1:8000` en Chrome. El servidor solo escucha en loopback. No publicar, no enlazar un túnel y no usar como servidor de producción. No utiliza los archivos de la carpeta como raíz pública indiscriminada: solo permite HTML, CSS, JS e imágenes de rutas concretas.
+
+`js/runtime.js` indica modo estático cuando se abre con Live Server. El servidor Python sustituye la respuesta de esa ruta en memoria para habilitar las operaciones de servidor; no modifica el archivo ni activa pagos.
+
+## Fichas y tallas
+
+Pulsa la foto o el nombre del producto. En la ficha tienes imagen grande, descripción, disponibilidad demo, talla, cantidad y botón de añadir. Escape, cerrar y volver al catálogo cierran la ficha y devuelven el foco al elemento de origen.
+
+- Leggings, top y camiseta: XS, S, M y L; elección obligatoria, sin talla preseleccionada.
+- Arnés: XS, S, M y L; guía provisional sin medidas inventadas. Confirmar cuello, pecho y peso con el fabricante.
+- Correa y juguete: talla única.
+- Leggings S y M son líneas independientes en carrito, resumen, confirmación y correo.
+- Todas las variantes están inicialmente disponibles. `available: false` prepara el caso sin stock por talla. `demoLimit: 20` limita cantidades de prueba; no es inventario real ni se descuenta tras un pedido.
+
+El catálogo canónico está en `data/catalogo.json`. Tras editarlo, ejecuta `python3 server/sync_catalog.py` para regenerar `js/catalogo.js`. El servidor valida los datos desde el JSON y nunca acepta nombres, precios o importes enviados por el navegador como autoridad.
+
+## Privacidad de pedidos
+
+Se ha eliminado la sección de historial, sus enlaces, avisos con datos de envío y toda persistencia de pedidos en el navegador. Al abrir esta versión se elimina la clave antigua `aylin-shop-demo-orders-v1` tanto de localStorage como de sessionStorage. No recupera ni muestra esos datos. Las copias de versiones anteriores que ya se hayan descargado no se pueden modificar remotamente: sustituye tu carpeta local por esta versión.
+
+El carrito guarda exclusivamente identificadores de producto, tallas y cantidades bajo `aylin-shop-variants-v2`. No contiene correos, nombres, teléfonos ni direcciones.
+
+En modo servidor, SQLite guarda los pedidos privados fuera del checkout público. En Linux, directorio 0700 y archivo 0600, rechazando enlaces simbólicos y rutas dentro del proyecto. Por defecto utiliza `/tmp/aylin-shop-private-<uid>`. En Windows utiliza `%LOCALAPPDATA%\AylinShop\private`: comprueba que sus ACL solo permitan el acceso de tu usuario y administradores del equipo. Puedes cambiarlo con `SHOP_PRIVATE_DIR`, siempre a una carpeta privada fuera del proyecto.
+
+Al iniciar y al acceder al servidor se borran los registros de más de 24 horas (pedidos, sesiones, opiniones y auditoría). Si el servidor está detenido o inactivo los archivos pueden persistir hasta esa limpieza; tras las pruebas puedes borrar el directorio privado con el servidor parado. SQLite usa borrado de contenido de filas, pero esto no garantiza eliminación forense de copias, cachés o respaldos del sistema.
+
+No hay API de historial, listados ni consulta de pedidos por número: GET `/api/orders` y `/api/orders/<id>` devuelven 404. El POST del pedido exige una cookie opaca HttpOnly/SameSite y CSRF; solo responde con la confirmación de esa solicitud, sus productos/tallas/cantidades y estados del correo, sin datos personales. El identificador o correo por sí solos no permiten consultar nada.
+
+No existe panel administrativo web. `/admin` y `/api/admin/...` deniegan acceso. Falta autenticación, autorización de roles, sesiones seguras con HTTPS, auditoría y un panel conectado a endpoints protegidos; no hay contraseña en JS ni contenido privado ocultado mediante CSS.
+
+## Opiniones
+
+La ficha incluye valoración 1–5 y comentario de 10–2000 caracteres. No se incluyen nombres ni opiniones de ejemplo. En modo servidor se guardan por producto, siempre **pendientes de moderación**, con límites de frecuencia y sesión. Solo se muestran las aprobadas, con puntuación, comentario y marca de compra demo si corresponde; nunca datos del comprador o de su pedido.
+
+La marca «Compra de demostración verificada por el servidor» depende de un pedido de ese producto registrado en el servidor y vinculado a la cookie HttpOnly de la sesión que escribe. La API rechaza campos como correo, número de pedido o `verified`. No equivale a una compra pagada ni a una identidad verificada. Para ventas reales se necesitará autenticación del comprador o invitaciones de un solo uso emitidas desde el servidor tras acreditar el pedido.
+
+Moderación **manual local** por el operador que tiene acceso al equipo y al directorio privado (no es un panel web de administración):
+
+```sh
+python3 server/moderate.py --list
+python3 server/moderate.py --id 1 --decision approved --reason "Comentario legítimo sin datos personales"
+python3 server/moderate.py --id 2 --decision rejected --reason "Spam o insultos; motivo concreto de revisión"
+```
+
+Usa el mismo `SHOP_PRIVATE_DIR` del servidor si lo has configurado. Revisa cada texto antes de aprobar: spam, amenazas, insultos, enlaces abusivos o datos personales no deben publicarse. Las críticas negativas legítimas se aprueban sin alterar estrellas ni comentarios. Cada decisión registra motivo y fecha; la herramienta no edita el texto. No hay filtro automático que convierta valoraciones negativas en positivas. No introduzcas datos personales en comentarios. Las pruebas verifican que una valoración legítima de una estrella se puede publicar intacta.
+
+## Correos reales de prueba
+
+Consulta los pasos exactos en `INTEGRACIONES.md`. Actualmente no hay credenciales configuradas: no se ha enviado ningún correo real. Con el servidor y Resend configurados, se intentan enviar dos correos reales, exclusivamente a buzones de prueba autorizados. El estado distingue no configurado, destinatario no autorizado, solicitud aceptada por el proveedor y envío no confirmado. La aceptación no demuestra entrega al buzón.
+
+Los correos incluyen identificador, productos, tallas, cantidades y total cero, e indican que no se enviará mercancía. El del vendedor añade los datos ficticios de envío y el estado demo. No hay claves ni dirección del vendedor en el código público. Los IDs de aceptación del proveedor se conservan en la base privada, no se exponen en la respuesta del checkout.
+
+## Pruebas
+
+```sh
+python3 -m unittest discover -s tests -p test_server.py -v
 python3 tests/smoke.py
 ```
 
-El navegador predeterminado es `/usr/bin/chromium`; puedes indicar otra ruta mediante `CHROMIUM_PATH`. Es una dependencia de pruebas, no de la tienda ni de Live Server. La prueba utiliza un servidor temporal de loopback y perfiles efímeros; no publica la tienda, no abre proveedores de pago y no envía correos.
+El primer comando solo requiere Python. Comprueba validación de tallas/cantidades/datos, CSRF, Host/Origin, aislamiento de sesiones, ausencia de endpoints de pedidos, idempotencia, permisos de archivos, moderación y verificación de compra. Prueba el correo con un proveedor **simulado**; no sustituye una prueba real de Resend.
 
-Comprobado en Chromium: seis productos a cero, filtros, etiquetas stock/sin stock, cantidades y límite demo, eliminar/vaciar, persistencia del carrito, formulario inválido, compra de los seis productos, IDs distintos, historial y avisos simulados, borrado, almacenamiento alterado/bloqueado, tratamiento seguro de textos, adaptadores de pago bloqueados, menú móvil, imágenes y anchos 320/390/768/1024/1440 px. Sin errores JavaScript/HTTP ni solicitudes a servicios externos en el flujo probado. No se han probado integraciones reales porque no existen ni están activas.
+El segundo requiere Python + Playwright + Chromium (ruta opcional `CHROMIUM_PATH`), usa perfiles efímeros y bases privadas temporales. Prueba fichas por foto/nombre, talla obligatoria, S/M separadas, seis productos a cero, resumen y confirmación, borrado del historial antiguo, ausencia de PII en confirmación/almacenamiento, opiniones pendientes y moderadas, manejo de texto sin interpretar HTML, vista estática y tamaños 320/390/768/1024/1440. Desactiva expresamente el correo real en la prueba.
 
-## Datos que pedir a Aylin antes de una tienda real
-
-Identidad fiscal y comercial, marca y contacto; especificaciones y fotografías de los seis productos reales; variantes, tallas, materiales y advertencias de uso; precios e impuestos definitivos; inventario, proveedores y facturación; países de venta, transportistas, plazos y portes; devoluciones, desistimiento y atención de incidencias; cuenta PayPal Business, proveedor de Apple Pay y cuenta bancaria comercial; proveedor de correo y dominio emisor. También hosting/backend, base de datos, responsable de privacidad, textos legales y consentimiento cuando corresponda. Todo requiere una nueva implementación y revisión antes de permitir compras públicas.
+Ningún script de prueba publica la tienda ni realiza cobros. Falta probar entrega real de correos después de configurar el proveedor y buzones propios.
