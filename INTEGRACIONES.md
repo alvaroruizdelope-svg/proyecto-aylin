@@ -70,3 +70,9 @@ El operador local revisa mediante `server/moderate.py`. No rechazar críticas le
 ## Pagos futuros (sin cambios en esta entrega)
 
 PayPal necesita aplicación/cuenta Business y flujo oficial desde servidor. Apple Pay requiere proveedor compatible, dominio verificado, HTTPS y dispositivo/navegador elegibles. Transferencia requiere cuenta comercial y conciliación real, sin dar por pagado un pedido al pulsar un botón. En todos los casos: importes calculados en servidor y validación de webhooks firmados/idempotentes antes de marcar pagos. Esta demo no hace ninguna de esas operaciones ni pide datos bancarios.
+
+## Transferencia: estructura interna incorporada, cobros todavía bloqueados
+
+`server/bank_transfer.py` añade configuración privada `SHOP_BANK_TRANSFER_ENABLED`, `SHOP_BANK_BENEFICIARY` y `SHOP_BANK_IBAN`, validación IBAN y registros de prueba «Pendiente de pago». La configuración no activa el método comercial: el bloqueo de esta versión lo impide incluso si la variable se establece en `true`. No hay confirmación pública de pago ni administración ficticia. Los seis productos y el checkout siguen a cero.
+
+Los detalles de diseño, persistencia, fixtures y requisitos de autorización/conciliación están en [TRANSFERENCIA.md](TRANSFERENCIA.md). No se ha modificado `js/integraciones.js` ni se han configurado cuentas reales.

@@ -21,6 +21,7 @@ from collections import defaultdict
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from bank_transfer import BankTransferService
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = {p['id']: p for p in json.loads((ROOT / 'data/catalogo.json').read_text())['products']}
@@ -135,6 +136,7 @@ class Application:
     def __init__(self, store, mailer=None):
         self.store = store
         self.mailer = mailer or ResendMailer()
+        self.bank_transfer = BankTransferService(store, CATALOG)
         self.csrf_secret = secrets.token_bytes(32)
         self.lock = threading.Lock()
         self.rates = defaultdict(list)
@@ -165,6 +167,8 @@ class Application:
             if not isinstance(item, dict) or set(item) != {'id', 'size', 'quantity'}:
                 raise Invalid('Variante no válida.')
             product = CATALOG.get(item['id']) if isinstance(item['id'], str) else None
+            if product and (type(product['priceMinor']) is not int or product['priceMinor'] != 0):
+                raise Invalid('Este checkout admite únicamente productos gratuitos de demostración.')
             variant = next((v for v in product['variants'] if v['size'] == item['size']), None) if product else None
             pair = (item['id'], item['size']) if isinstance(item['id'], str) and isinstance(item['size'], str) else None
             if not variant or not variant['available'] or type(item['quantity']) is not int or not 1 <= item['quantity'] <= variant['demoLimit'] or pair in seen:

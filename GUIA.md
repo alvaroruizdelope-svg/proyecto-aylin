@@ -77,7 +77,7 @@ Los correos incluyen identificador, productos, tallas, cantidades y total cero, 
 ## Pruebas
 
 ```sh
-python3 -m unittest discover -s tests -p test_server.py -v
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 tests/smoke.py
 ```
 
@@ -86,3 +86,9 @@ El primer comando solo requiere Python. Comprueba validación de tallas/cantidad
 El segundo requiere Python + Playwright + Chromium (ruta opcional `CHROMIUM_PATH`), usa perfiles efímeros y bases privadas temporales. Prueba fichas por foto/nombre, talla obligatoria, S/M separadas, seis productos a cero, resumen y confirmación, borrado del historial antiguo, ausencia de datos privados de pedidos en confirmación/almacenamiento, opiniones generales antes del footer sin reseñas en fichas, alias y fecha reales, formulario modal, opiniones pendientes y moderadas, manejo de texto sin interpretar HTML, vista estática y tamaños 320/390/768/1024/1440. Desactiva expresamente el correo real en la prueba.
 
 Ningún script de prueba publica la tienda ni realiza cobros. Falta probar entrega real de correos después de configurar el proveedor y buzones propios.
+
+## Estructura de transferencia bancaria desactivada
+
+Se ha añadido el módulo privado `server/bank_transfer.py`: variables de entorno de beneficiario/IBAN, cálculo en céntimos desde catálogo de servidor y registro de prueba con estado «Pendiente de pago». No está conectado a un checkout comercial y no hay ruta HTTP para crear transferencias ni marcar pagos. El total cero mantiene el flujo gratuito sin instrucciones bancarias. El catálogo y los pagos públicos permanecen sin cambios.
+
+Los datos de cuenta solo se toman del entorno privado; no se han introducido cuentas reales. Las pruebas usan cuenta sintética e importes positivos en copias temporales del catálogo. Los registros pendientes de prueba se guardan en `transfer_orders`, fuera de la limpieza de pedidos demo y sin otorgar verificación de compra. Véase [TRANSFERENCIA.md](TRANSFERENCIA.md) para el contrato, bloqueos y requisitos antes de una futura activación real.
