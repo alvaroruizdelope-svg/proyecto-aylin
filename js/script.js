@@ -95,29 +95,57 @@
     $('#product-quantity').value = 1; $('#product-quantity').max = 20;
     $('#variant-add').disabled = !product.variants.some(v => v.available);
     $('#size-guide').hidden = !product.sizeGuide; $('#size-guide').textContent = product.sizeGuide;
-    $('#variant-error').textContent = ''; $('#review-form').reset(); $('#review-status').textContent = '';
-    $('#published-reviews').textContent = 'Consultando opiniones…';
+    $('#variant-error').textContent = '';
     dialog.showModal(); document.body.classList.add('modal-open'); dialog.scrollTop = 0;
-    loadReviews(product);
   }
-  async function loadReviews(product) {
+  let reviewCursor = null;
+  let loadingReviews = false;
+  let postingReview = false;
+  async function loadReviews(reset = true) {
+    if (loadingReviews) return;
     const container = $('#published-reviews');
-    if (!window.AYLIN_BACKEND) { container.textContent = 'No hay opiniones publicadas disponibles en esta vista local. El envío y la consulta necesitan el servidor de pruebas.'; return; }
+    if (!window.AYLIN_BACKEND) { container.textContent = 'No hay opiniones publicadas disponibles en esta vista local. El envío y la consulta necesitan el servidor de pruebas.'; $('#more-reviews').hidden = true; return; }
+    loadingReviews = true;
+    $('#refresh-reviews').disabled = true; $('#more-reviews').disabled = true;
+    if (reset) { reviewCursor = null; $('#more-reviews').hidden = true; container.textContent = 'Consultando opiniones…'; }
     try {
       await apiReady;
-      const response = await fetch(`/api/reviews?product=${encodeURIComponent(product.id)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/reviews${!reset && reviewCursor ? `?cursor=${encodeURIComponent(reviewCursor)}` : ''}`, { cache: 'no-store' });
       if (!response.ok) throw new Error();
       const result = await response.json();
-      if (activeProduct?.id !== product.id) return;
-      container.replaceChildren();
-      if (!result.reviews.length) container.append(node('p', 'Aún no hay opiniones publicadas para este producto.', 'fine-print'));
+      if (reset) container.replaceChildren();
+      if (!result.reviews.length && reset) container.append(node('p', 'Aún no hay opiniones publicadas. Puedes compartir tu experiencia con el botón «Dejar una opinión».', 'fine-print'));
       result.reviews.forEach(review => {
         const article = node('article', undefined, 'published-review');
-        article.append(node('strong', `${review.rating} / 5 estrellas`), node('p', review.comment), node('small', review.verifiedDemo ? 'Compra de demostración verificada por el servidor' : 'Compra no verificada'));
+        const heading = node('div', undefined, 'review-card-heading');
+        heading.append(node('strong', review.publicName || 'Nombre público no facilitado'));
+        if (review.publishedAt) {
+          const date = new Date(review.publishedAt);
+          const time = node('time', new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' }).format(date));
+          time.dateTime = review.publishedAt; heading.append(time);
+        } else { heading.append(node('small', 'Fecha de publicación no registrada')); }
+        const stars = node('div', `${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}`, 'review-stars');
+        stars.setAttribute('role', 'img'); stars.setAttribute('aria-label', `${review.rating} de 5 estrellas`);
+        article.append(heading, stars, node('p', review.comment), node('small', review.verifiedDemo ? 'Compra de demostración verificada por el servidor' : 'Compra no verificada'));
         container.append(article);
       });
-    } catch { if (activeProduct?.id === product.id) container.textContent = 'No se pueden consultar opiniones ahora. No se mostrarán valoraciones de ejemplo.'; }
+      reviewCursor = result.nextCursor;
+      $('#more-reviews').hidden = !reviewCursor;
+    } catch {
+      if (reset) container.textContent = 'No se pueden consultar opiniones ahora. No se mostrarán valoraciones de ejemplo.';
+      else announce('No se han podido cargar más opiniones. Puedes volver a intentarlo.');
+    } finally { loadingReviews = false; $('#refresh-reviews').disabled = false; $('#more-reviews').disabled = false; }
   }
+  const reviewDialog = $('#review-dialog');
+  $('#leave-review').addEventListener('click', () => {
+    $('#review-status').textContent = '';
+    reviewDialog.showModal(); document.body.classList.add('modal-open');
+  });
+  $('#review-close').addEventListener('click', () => reviewDialog.close());
+  $('#review-cancel').addEventListener('click', () => reviewDialog.close());
+  reviewDialog.addEventListener('close', () => { document.body.classList.remove('modal-open'); $('#leave-review').focus(); });
+  $('#refresh-reviews').addEventListener('click', () => loadReviews(true));
+  $('#more-reviews').addEventListener('click', () => loadReviews(false));
   $('#product-size').addEventListener('change', () => {
     const variant = variantOf(activeProduct, $('#product-size').value);
     $('#product-quantity').max = variant?.demoLimit || 20; $('#variant-error').textContent = '';
@@ -135,15 +163,15 @@
     changedCart(); dialog.close(); announce(`${activeProduct.name}, talla ${size}, añadido al carrito.`);
   });
   $('#review-form').addEventListener('submit', async event => {
-    event.preventDefault(); const form = event.currentTarget; const product = activeProduct;
-    if (!form.reportValidity()) return;
+    event.preventDefault(); const form = event.currentTarget;
+    if (postingReview || !form.reportValidity()) return;
     if (!window.AYLIN_BACKEND) { $('#review-status').textContent = 'No se ha enviado ni guardado la opinión: esta vista no tiene servidor de opiniones.'; return; }
-    const data = new FormData(form); const button = form.querySelector('button[type=submit]'); button.disabled = true;
+    const data = new FormData(form); const button = form.querySelector('button[type=submit]'); postingReview = true; button.disabled = true;
     try {
-      const result = await api('/api/reviews', { product: product.id, rating: Number(data.get('rating')), comment: String(data.get('comment')).trim() });
-      if (activeProduct?.id === product.id) { $('#review-status').textContent = result.message; form.reset(); }
-    } catch (error) { if (activeProduct?.id === product.id) $('#review-status').textContent = error.message; }
-    finally { button.disabled = false; }
+      const result = await api('/api/reviews', { publicName: String(data.get('publicName')).trim(), rating: Number(data.get('rating')), comment: String(data.get('comment')).trim() });
+      $('#review-status').textContent = result.message; form.reset();
+    } catch (error) { $('#review-status').textContent = error.message; }
+    finally { postingReview = false; button.disabled = false; }
   });
   $('#product-close').addEventListener('click', () => dialog.close());
   $('#product-back').addEventListener('click', () => dialog.close());
@@ -253,5 +281,5 @@
   document.addEventListener('click', e => { if (!e.target.closest('.header')) closeMenu(); });
   window.matchMedia('(max-width: 800px)').addEventListener('change', () => closeMenu());
   $('#year').textContent = new Date().getFullYear();
-  renderProducts(); renderCart();
+  renderProducts(); renderCart(); loadReviews();
 })();

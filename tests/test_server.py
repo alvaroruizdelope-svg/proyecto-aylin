@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 import sys
+import sqlite3
+import time
 import tempfile
 import threading
 import unittest
@@ -107,10 +109,69 @@ class ServerTests(unittest.TestCase):
         decide(self.store, rows[0]['id'], 'approved', 'Crítica legítima sin datos personales')
         decide(self.store, rows[1]['id'], 'rejected', 'Duplicado de prueba identificado por el operador')
         public = self.b.request('/api/reviews?product=leggings')[1]['reviews']
-        self.assertEqual(public, [{'rating': 1, 'comment': review['comment'], 'verifiedDemo': True}])
+        self.assertEqual(len(public), 1)
+        self.assertEqual(public[0]['rating'], 1)
+        self.assertEqual(public[0]['comment'], review['comment'])
+        self.assertTrue(public[0]['verifiedDemo'])
+        self.assertIsNone(public[0]['publicName'])
+        self.assertIsNotNone(public[0]['publishedAt'])
         self.assertNotIn('sid', str(public)); self.assertNotIn('email', str(public))
         for _ in range(4): self.assertEqual(self.a.request('/api/reviews', review)[0], 201)
         self.assertEqual(self.a.request('/api/reviews', review)[0], 400)
+
+
+    def test_general_reviews_public_alias_date_and_pagination(self):
+        review = {'publicName': 'Alias prueba', 'rating': 1, 'comment': 'Una crítica general legítima, sin datos de contacto.'}
+        self.assertEqual(self.a.request('/api/reviews', review)[0], 201)
+        self.assertEqual(self.a.request('/api/reviews')[1]['reviews'], [])
+        with self.store.connect() as db:
+            row = db.execute('SELECT * FROM reviews ORDER BY id DESC LIMIT 1').fetchone()
+        self.assertEqual(row['product'], '')
+        self.assertFalse(row['verified'])
+        self.assertEqual(row['public_name'], 'Alias prueba')
+        self.assertIsNone(row['published_at'])
+        decide(self.store, row['id'], 'approved', 'Comentario negativo legítimo sin datos privados')
+        first = self.b.request('/api/reviews')[1]['reviews'][0]
+        self.assertEqual(first['publicName'], 'Alias prueba')
+        self.assertIsNotNone(first['publishedAt'])
+        self.assertEqual(first['rating'], 1)
+        self.assertEqual(set(first), {'publicName', 'publishedAt', 'comment', 'rating', 'verifiedDemo'})
+        # Mantener la fecha original al aprobar de nuevo, sin fabricar una fecha nueva.
+        decide(self.store, row['id'], 'approved', 'Revisión sin cambios de la misma opinión')
+        self.assertEqual(self.b.request('/api/reviews')[1]['reviews'][0]['publishedAt'], first['publishedAt'])
+        for name in ['persona@example.com', '600000000', '<img src=x>', '  ']:
+            self.assertEqual(self.a.request('/api/reviews', dict(review, publicName=name))[0], 400)
+        self.assertEqual(self.a.request('/api/reviews', dict(review, verified=True))[0], 400)
+        self.assertEqual(self.a.request('/api/orders', payload())[0], 201)
+        self.assertEqual(self.a.request('/api/reviews', review)[0], 201)
+        with self.store.connect() as db:
+            self.assertEqual(db.execute('SELECT verified FROM reviews ORDER BY id DESC LIMIT 1').fetchone()[0], 1)
+            for i in range(22):
+                db.execute("INSERT INTO reviews (sid,product,rating,comment,verified,created,status,public_name,published_at) VALUES (?,?,?,?,?,?,?,?,?)", ('fixture', '', 2, f'Comentario de prueba temporal {i}', 0, time.time(), 'approved', 'Alias temporal', time.time()))
+        part = self.b.request('/api/reviews')[1]
+        self.assertEqual(len(part['reviews']), 20); self.assertIsNotNone(part['nextCursor'])
+        rest = self.b.request('/api/reviews?cursor=' + str(part['nextCursor']))[1]
+        self.assertEqual(len(rest['reviews']), 3); self.assertIsNone(rest['nextCursor'])
+        self.assertEqual(self.b.request('/api/reviews?cursor=incorrecto')[0], 400)
+
+class MigrationTests(unittest.TestCase):
+    def test_preserve_existing_old_reviews_without_inventing_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'shop.sqlite3'
+            db = sqlite3.connect(path)
+            db.execute("CREATE TABLE reviews (id INTEGER PRIMARY KEY,sid TEXT NOT NULL,product TEXT NOT NULL,rating INTEGER NOT NULL,comment TEXT NOT NULL,verified INTEGER NOT NULL,created REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',reason TEXT NOT NULL DEFAULT '')")
+            db.execute('INSERT INTO reviews VALUES (?,?,?,?,?,?,?,?,?)', (8,'legacy-session','leggings',1,'Comentario antiguo conservado sin alteraciones.',1,time.time()-3*86400,'approved','Motivo antiguo'))
+            db.commit(); before = db.execute('SELECT * FROM reviews').fetchone(); db.close()
+            store = Store(directory); store.cleanup(); Store(directory)
+            with store.connect() as db:
+                row = db.execute('SELECT * FROM reviews WHERE id=8').fetchone()
+                self.assertEqual(tuple(row)[:9], before)
+                self.assertEqual(row['public_name'], '')
+                self.assertIsNone(row['published_at'])
+            decide(store, 8, 'approved', 'La opinión antigua permanece publicada sin modificarla')
+            with store.connect() as db:
+                self.assertIsNone(db.execute('SELECT published_at FROM reviews WHERE id=8').fetchone()[0])
+
 
 class MailerTests(unittest.TestCase):
     def test_no_configuration_no_requests(self):

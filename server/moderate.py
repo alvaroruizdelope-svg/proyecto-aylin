@@ -11,9 +11,11 @@ def decide(store, review_id, decision, reason):
     if decision not in ('approved', 'rejected') or not reason or len(reason.strip()) < 5:
         raise ValueError('Decisión o motivo no válidos.')
     with store.connect() as db:
-        row = db.execute('SELECT id FROM reviews WHERE id=?', (review_id,)).fetchone()
+        row = db.execute('SELECT id,status FROM reviews WHERE id=?', (review_id,)).fetchone()
         if not row:
             raise ValueError('Opinión no encontrada.')
+        if decision == 'approved' and row['status'] != 'approved':
+            db.execute('UPDATE reviews SET published_at=COALESCE(published_at,?) WHERE id=?', (time.time(), review_id))
         db.execute('UPDATE reviews SET status=?,reason=? WHERE id=?', (decision, reason.strip(), review_id))
         db.execute('INSERT INTO moderation (review_id,decision,reason,created) VALUES (?,?,?,?)',
                    (review_id, decision, reason.strip(), time.time()))
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     store = Store(os.environ.get('SHOP_PRIVATE_DIR', default_private_directory()))
     if args.list:
         with store.connect() as db:
-            for row in db.execute("SELECT id,product,rating,comment,verified FROM reviews WHERE status='pending'"):
+            for row in db.execute("SELECT id,product,public_name,rating,comment,verified FROM reviews WHERE status='pending'"):
                 print(dict(row))
     elif args.id and args.decision and args.reason:
         decide(store, args.id, args.decision, args.reason)

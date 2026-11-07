@@ -5,7 +5,7 @@ Seis productos de ropa deportiva y mascotas, todos a **0,00 €**. Sin cobros ni
 - Fichas de producto accesibles desde foto o nombre, con talla y cantidad.
 - XS/S/M/L para ropa y arnés; talla única para correa y juguete; variantes independientes en carrito y resumen.
 - Solo confirmación del pedido actual, sin historial público ni datos de envío en la confirmación. No se guardan pedidos en el navegador.
-- Opiniones por producto, sin reseñas inventadas: el servidor mantiene las nuevas pendientes de moderación y comprueba las compras demo por sesión.
+- Opiniones generales justo antes del footer, sin reseñas en fichas: alias público, estrellas, comentario y fecha de publicación; formulario independiente, moderación y verificación demo por sesión. Se conservan las opiniones antiguas sin inventar nombres ni fechas.
 - Integración de correo real con Resend desde servidor, desactivada hasta configurar credenciales y buzones autorizados. **No se ha enviado ningún correo real en las pruebas.**
 - No existe panel web administrativo inseguro: su autenticación y autorización real quedan documentadas como pendientes. Los pagos permanecen sin cambios y desactivados.
 

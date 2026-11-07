@@ -2,6 +2,7 @@
 Sin dependencias externas. python3 server/app.py --port 8000
 """
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = {p['id']: p for p in json.loads((ROOT / 'data/catalogo.json').read_text())['products']}
 assert len(CATALOG) == 6 and all(p['priceMinor'] == 0 for p in CATALOG.values())
 FIELDS = {'name': (3, 100), 'email': (5, 150), 'phone': (7, 25), 'address': (5, 180), 'postal': (5, 5), 'city': (2, 80), 'province': (2, 80)}
-TTL = 86400  # Se eliminan registros anteriores al iniciar y en cada acceso.
+TTL = 86400  # Caducidad de pedidos/sesiones de prueba; las opiniones se conservan.
 
 def default_private_directory():
     if os.name == 'nt':
@@ -70,6 +71,14 @@ class Store:
                 CREATE TABLE IF NOT EXISTS moderation (id INTEGER PRIMARY KEY, review_id INTEGER NOT NULL,
                   decision TEXT NOT NULL, reason TEXT NOT NULL, created REAL NOT NULL);
             ''')
+        # Migración aditiva: conserva comentarios, estrellas, verificación y asociación antigua.
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(reviews)')}
+            if 'public_name' not in columns:
+                db.execute("ALTER TABLE reviews ADD COLUMN public_name TEXT NOT NULL DEFAULT ''")
+            if 'published_at' not in columns:
+                db.execute('ALTER TABLE reviews ADD COLUMN published_at REAL')
         self.cleanup()
 
     def connect(self):
@@ -80,7 +89,8 @@ class Store:
 
     def cleanup(self):
         with self.connect() as db:
-            for table in ('orders', 'reviews', 'sessions', 'moderation'):
+            # Las opiniones y sus decisiones no se borran por antigüedad: preservar las existentes.
+            for table in ('orders', 'sessions'):
                 db.execute(f'DELETE FROM {table} WHERE created < ?', (time.time() - TTL,))
 
 class ResendMailer:
@@ -199,21 +209,28 @@ class Application:
         return receipt
 
     def review(self, sid, body):
-        if set(body) != {'product', 'rating', 'comment'}:
-            raise Invalid('Solo se admiten producto, valoración y comentario.')
-        product, rating, comment = body['product'], body['rating'], body['comment']
-        if not isinstance(product, str) or product not in CATALOG or type(rating) is not int or rating not in range(1, 6) or not isinstance(comment, str) or not 10 <= len(comment.strip()) <= 2000:
+        legacy = set(body) == {'product', 'rating', 'comment'}
+        if not legacy and set(body) != {'publicName', 'rating', 'comment'}:
+            raise Invalid('Solo se admiten alias público, valoración y comentario.')
+        # Compatibilidad con clientes anteriores; las nuevas opiniones son generales.
+        product = body.get('product', '')
+        name = body.get('publicName', '')
+        rating, comment = body['rating'], body['comment']
+        if legacy and (not isinstance(product, str) or product not in CATALOG):
+            raise Invalid('Producto no válido.')
+        if not legacy and (not isinstance(name, str) or not re.fullmatch(r"[\w .'-]{2,60}", name.strip()) or re.search(r'\d{7,}', name)):
+            raise Invalid('Utiliza un alias público de 2–60 caracteres, sin datos de contacto.')
+        if type(rating) is not int or rating not in range(1, 6) or not isinstance(comment, str) or not 10 <= len(comment.strip()) <= 2000:
             raise Invalid('Selecciona 1–5 estrellas y un comentario de 10–2000 caracteres.')
         if any(ord(c) < 32 and c not in '\n\t' for c in comment):
             raise Invalid('El comentario contiene caracteres no válidos.')
         with self.store.connect() as db:
             if db.execute('SELECT count(*) FROM reviews WHERE sid=? AND created>?', (sid, time.time()-86400)).fetchone()[0] >= 5:
                 raise Invalid('Límite de opiniones de prueba alcanzado.')
-            # La propiedad del pedido se acredita con la cookie HttpOnly, nunca con correo/número recibido.
             rows = db.execute('SELECT payload FROM orders WHERE sid=?', (sid,)).fetchall()
-            verified = any(any(i['id'] == product for i in json.loads(row['payload'])['items']) for row in rows)
-            db.execute('INSERT INTO reviews (sid,product,rating,comment,verified,created) VALUES (?,?,?,?,?,?)',
-                       (sid, product, rating, comment.strip(), int(verified), time.time()))
+            verified = bool(rows) if not product else any(any(i['id'] == product for i in json.loads(row['payload'])['items']) for row in rows)
+            db.execute('INSERT INTO reviews (sid,product,rating,comment,verified,created,public_name) VALUES (?,?,?,?,?,?,?)',
+                       (sid, product, rating, comment.strip(), int(verified), time.time(), name.strip()))
         return {'status': 'pending', 'message': 'Opinión recibida y pendiente de moderación. Todavía no está publicada.'}
 
 class Handler(BaseHTTPRequestHandler):
@@ -280,12 +297,24 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, {'csrf': csrf, 'mailConfigured': self.server.app.mailer.enabled},
                               f'aylin_session={raw}; HttpOnly; SameSite=Strict; Path=/api; Max-Age={TTL}' if raw else None)
         if path == '/api/reviews':
-            product = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get('product', [''])[0]
-            if product not in CATALOG:
-                return self.reply(400, {'error': 'Producto no válido.'})
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            product = query.get('product', [''])[0]  # Compatibilidad; la sección general no filtra por producto.
+            cursor = query.get('cursor', [''])[0]
+            if (product and product not in CATALOG) or (cursor and not re.fullmatch(r'[0-9]{1,18}', cursor)):
+                return self.reply(400, {'error': 'Consulta de opiniones no válida.'})
+            where, values = ["status='approved'"], []
+            if product:
+                where.append('product=?'); values.append(product)
+            if cursor:
+                where.append('id<?'); values.append(int(cursor))
             with self.server.app.store.connect() as db:
-                rows = db.execute("SELECT rating,comment,verified FROM reviews WHERE product=? AND status='approved' ORDER BY id DESC LIMIT 50", (product,)).fetchall()
-            return self.reply(200, {'reviews': [{'rating': r['rating'], 'comment': r['comment'], 'verifiedDemo': bool(r['verified'])} for r in rows]})
+                rows = db.execute('SELECT id,rating,comment,verified,public_name,published_at FROM reviews WHERE ' + ' AND '.join(where) + ' ORDER BY id DESC LIMIT 21', values).fetchall()
+            more = len(rows) > 20
+            rows = rows[:20]
+            result = [{'rating': r['rating'], 'comment': r['comment'], 'verifiedDemo': bool(r['verified']),
+                       'publicName': r['public_name'] or None,
+                       'publishedAt': datetime.fromtimestamp(r['published_at'], timezone.utc).isoformat() if r['published_at'] else None} for r in rows]
+            return self.reply(200, {'reviews': result, 'nextCursor': rows[-1]['id'] if more else None})
         if path.startswith('/api/admin') or path.startswith('/admin'):
             return self.reply(401, {'error': 'Administración no disponible: requiere autenticación y autorización de servidor, todavía no implementadas.'})
         if path.startswith('/api/'):

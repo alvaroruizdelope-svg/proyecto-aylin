@@ -67,13 +67,17 @@ with tempfile.TemporaryDirectory() as directory:
             assert page.locator('.cart-line').count() == 6
             open_product('arnes'); assert 'fabricante' in page.locator('#size-guide').inner_text(); page.locator('#product-close').click()
             # Sin reseñas ficticias. Primer envío queda pendiente, no publicado.
-            open_product('leggings')
+            assert page.locator('#product-dialog #review-form, #product-dialog #published-reviews, .product-card .published-review').count() == 0
+            assert page.locator('main > section').last.get_attribute('id') == 'opiniones'
+            page.locator('#leave-review').click()
+            page.locator('[name="publicName"]').fill('Alias de prueba')
             assert 'Aún no hay opiniones publicadas' in page.locator('#published-reviews').inner_text()
             page.locator('[name="rating"][value="2"]').check(); page.locator('[name="comment"]').fill('Una opinión de prueba anterior al pedido.')
             page.locator('#review-form button[type=submit]').click()
             expect(page.locator('#review-status')).to_contain_text('pendiente')
             assert page.locator('.published-review').count() == 0
-            page.locator('#product-close').click()
+            page.locator('#review-close').click()
+            assert page.evaluate('document.activeElement.id') == 'leave-review'
             page.locator('#checkout-start').click()
             assert page.locator('#checkout-summary .summary-line').count() == 6
             assert 'Talla S' in page.locator('#checkout-summary').inner_text()
@@ -90,20 +94,22 @@ with tempfile.TemporaryDirectory() as directory:
             assert page.evaluate("!JSON.stringify(localStorage).includes('ejemplo@example.com')")
             assert page.evaluate("!JSON.stringify(sessionStorage).includes('ejemplo@example.com')")
             # Opinión negativa de compra demo: verificación solo servidor y aprobación manual, sin alterar puntuación.
-            open_product('leggings'); page.locator('[name="rating"][value="1"]').check()
+            page.locator('#leave-review').click(); page.locator('[name="publicName"]').fill('Alias comprador'); page.locator('[name="rating"][value="1"]').check()
             comment = 'No me gusta. <img src=x onerror=alert(1)> Este texto es de prueba.'
             page.locator('[name="comment"]').fill(comment); page.locator('#review-form button[type=submit]').click()
             expect(page.locator('#review-status')).to_contain_text('pendiente')
             with app.store.connect() as db: row = db.execute('SELECT id,verified FROM reviews ORDER BY id DESC LIMIT 1').fetchone()
             assert row['verified'] == 1
             decide(app.store, row['id'], 'approved', 'Prueba de crítica negativa legítima, mostrada como texto')
-            page.locator('#product-close').click(); open_product('leggings')
+            page.locator('#review-close').click(); page.locator('#refresh-reviews').click()
             page.wait_for_selector('.published-review')
-            assert '1 / 5' in page.locator('.published-review').inner_text()
+            assert page.locator('.published-review .review-stars').get_attribute('aria-label') == '1 de 5 estrellas'
+            assert 'Alias comprador' in page.locator('.published-review').inner_text()
+            assert page.locator('.published-review time').get_attribute('datetime')
+            assert 'ejemplo@example.com' not in page.locator('#opiniones').inner_text()
             assert comment in page.locator('.published-review').inner_text()
             assert page.locator('.published-review img').count() == 0
             assert 'verificada por el servidor' in page.locator('.published-review').inner_text()
-            page.locator('#product-close').click()
             page.reload(); assert not page.locator('#confirmation').is_visible()
             assert page.locator('#orders, #pedidos').count() == 0
             other = browser.new_context(); other_page = other.new_page(); other_page.goto(url)
@@ -117,6 +123,10 @@ with tempfile.TemporaryDirectory() as directory:
                 open_product('arnes')
                 assert page.locator('#product-dialog').evaluate('(e)=>e.scrollWidth<=e.clientWidth'), width
                 page.locator('#product-close').click()
+                page.locator('#leave-review').click()
+                assert page.locator('#review-dialog').evaluate('(e)=>e.scrollWidth<=e.clientWidth'), width
+                page.locator('#review-close').click()
+                assert page.locator('#opiniones').evaluate('(e)=>e.scrollWidth<=e.clientWidth'), width
             for img in page.locator('img').all():
                 if img.get_attribute('id') != 'product-image':
                     img.evaluate('(e)=>e.loading="eager"'); img.evaluate('(e)=>e.decode()')
@@ -140,8 +150,14 @@ with tempfile.TemporaryDirectory() as directory:
                 assert 'Prueba local sin registro' in static_page.locator('#confirmation-message').inner_text()
                 assert 'no enviado en modo local' in static_page.locator('#confirmation-mail').inner_text()
                 static_page.reload(); assert not static_page.locator('#confirmation').is_visible()
+                static_page.locator('#leave-review').click()
+                static_page.locator('[name="publicName"]').fill('Alias local')
+                static_page.locator('[name="rating"][value="4"]').check()
+                static_page.locator('[name="comment"]').fill('Opinión de prueba sin servidor para comprobar que no se guarda.')
+                static_page.locator('#review-form button[type=submit]').click()
+                expect(static_page.locator('#review-status')).to_contain_text('No se ha enviado ni guardado')
             finally: static.shutdown(); static.server_close()
             browser.close()
-            print('PASS: fichas por foto/nombre; selección obligatoria de tallas; variantes independientes; seis productos a cero; cantidades; resumen con tallas; confirmación sin PII ni historial; aislamiento de sesiones; opiniones reales pendientes/moderadas y verificación por servidor; texto seguro; modo estático; pagos intactos; cinco tamaños responsive y sin errores JS.')
+            print('PASS: fichas por foto/nombre; selección obligatoria de tallas; variantes independientes; seis productos a cero; cantidades; resumen con tallas; confirmación sin PII ni historial; aislamiento de sesiones; opiniones generales antes del footer sin reseñas en fichas, alias y fecha de publicación, moderación y verificación por servidor; texto seguro; modo estático; pagos intactos; cinco tamaños responsive y sin errores JS.')
     finally:
         server.shutdown(); server.server_close()
